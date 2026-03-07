@@ -4,30 +4,23 @@ import {
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  type Connection,
-  type Node,
-  type Edge,
   BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
+import { useStore } from "@/store/use-store";
 
 export function AppShell() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      setEdges((eds) => addEdge(connection, eds));
-    },
-    [setEdges]
-  );
+  const { 
+    nodes, 
+    edges, 
+    onNodesChange, 
+    onEdgesChange, 
+    onConnect 
+  } = useStore();
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -66,16 +59,16 @@ export function AppShell() {
               onDrop={onDrop}
               fitView
               proOptions={{ hideAttribution: true }}
-              className="bg-transparent"
+              style={{ backgroundColor: "#f8f7f4" }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#dddcd7" />
+              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
               <Controls showInteractive={false} />
-              <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" />
+              {/* <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" /> */}
             </ReactFlow>
           </div>
         </div>
 
-        <StatusBar nodeCount={nodes.length} edgeCount={edges.length} />
+        <StatusBar />
       </div>
     </>
   );

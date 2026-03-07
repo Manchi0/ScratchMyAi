@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useStore } from "@/store/use-store";
 
 export function TitleBar() {
-  const [title, setTitle] = useState("Untitled");
+  const { title, setTitle } = useStore();
 
   return (
     <header className="flex items-center justify-center h-12 px-4 border-b border-[#e8e7e2] bg-white shrink-0">

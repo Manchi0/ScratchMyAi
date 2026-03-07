@@ -67,7 +67,7 @@ body {
 }
 
 .react-flow__background {
-  background-color: var(--background) !important;
+  /* Dynamic background handle via component style */
 }
 
 .react-flow__minimap {
