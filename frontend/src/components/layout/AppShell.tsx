@@ -10,7 +10,14 @@ import "@xyflow/react/dist/style.css";
 
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
+import { Sidebar } from "./Sidebar";
 import { useStore } from "@/store/use-store";
+import { NodeRender } from "@/components/canvas/NodeRender";
+import { getBlockDefinition } from "@/blocks/BlockRegistry";
+
+const nodeTypes = {
+  neuralBlock: NodeRender,
+};
 
 export function AppShell() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -19,7 +26,8 @@ export function AppShell() {
     edges, 
     onNodesChange, 
     onEdgesChange, 
-    onConnect 
+    onConnect,
+    setNodes
   } = useStore();
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -30,9 +38,30 @@ export function AppShell() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      // Placeholder for new block drop logic
+      
+      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
+      const type = e.dataTransfer.getData("application/reactflow");
+
+      if (!type || !reactFlowBounds) {
+        return;
+      }
+
+      // Check if definition exists
+      const definition = getBlockDefinition(type);
+      if (!definition) return;
+
+      // Ensure drop is inside the canvas
+      let position = {
+        x: e.clientX - reactFlowBounds.left,
+        y: e.clientY - reactFlowBounds.top,
+      };
+
+      // Create new node using BlockDefinition method
+      const newNode = definition.createNode(position);
+
+      setNodes([...nodes, newNode]);
     },
-    []
+    [reactFlowWrapper, nodes, setNodes]
   );
 
   return (
@@ -41,17 +70,14 @@ export function AppShell() {
         <TitleBar />
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Left: Sidebar Placeholder */}
-          <div className="w-64 bg-white border-r border-[#e8e7e2] p-4 flex flex-col gap-4">
-            <h2 className="text-sm font-semibold">Sidebar</h2>
-            <p className="text-xs text-[#a8a29e]">Redo your block palette here.</p>
-          </div>
+          <Sidebar />
 
           {/* Center: Canvas */}
           <div className="flex-1 relative min-w-0" ref={reactFlowWrapper}>
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              nodeTypes={nodeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
