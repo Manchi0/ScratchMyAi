@@ -13,10 +13,15 @@ import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
 import { useStore } from "@/store/use-store";
 import { NodeRender } from "@/components/canvas/NodeRender";
+import { WireEdge } from "@/components/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
 const nodeTypes = {
   neuralBlock: NodeRender,
+};
+
+const edgeTypes = {
+  wire: WireEdge,
 };
 
 export function AppShell() {
@@ -78,12 +83,15 @@ export function AppShell() {
               nodes={nodes}
               edges={edges}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              defaultEdgeOptions={{ type: 'wire' }}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onDragOver={onDragOver}
               onDrop={onDrop}
-              fitView
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+              minZoom={0.1}
               proOptions={{ hideAttribution: true }}
               style={{ backgroundColor: "#f8f7f4" }}
             >

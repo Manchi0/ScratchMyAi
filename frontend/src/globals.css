@@ -100,16 +100,24 @@ body {
 }
 
 .react-flow__handle {
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: background-color 0.1s ease;
 }
 
-.react-flow__node:hover .react-flow__handle {
-  opacity: 1;
+.react-flow__handle:hover {
+  background-color: var(--text-secondary) !important;
 }
 
 .react-flow__attribution {
   display: none !important;
+}
+
+@keyframes dash {
+  from {
+    stroke-dashoffset: 8;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ---- Scrollbar ---- */

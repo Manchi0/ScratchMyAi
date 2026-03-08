@@ -29,7 +29,9 @@ export function Sidebar() {
                 {category}s
               </h3>
               <div className="flex flex-col gap-2">
-                {blocksInCategory.map((block) => (
+                {blocksInCategory.map((block) => {
+                  const Icon = block.icon;
+                  return (
                   <div
                     key={block.type}
                     className="p-3 border rounded cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow bg-gray-50 flex items-center gap-3"
@@ -38,12 +40,14 @@ export function Sidebar() {
                     style={{ borderColor: `${block.color}40` }} // 25% opacity border
                   >
                     <div 
-                      className="w-3 h-3 rounded-full shrink-0" 
+                      className="flex items-center justify-center w-6 h-6 rounded-full shrink-0 shadow-sm" 
                       style={{ backgroundColor: block.color }}
-                    />
+                    >
+                      {Icon && <Icon size={14} className="text-white" />}
+                    </div>
                     <span className="text-sm font-medium text-gray-700">{block.title}</span>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           );

@@ -1,10 +1,12 @@
 import { BlockDefinition, BlockPort } from '../BlockDefinition';
 import { BlockParameter } from '../BlockParameter';
+import { Database } from 'lucide-react';
 
 export class DatasetBlock extends BlockDefinition {
   type = 'dataset';
   category = 'input' as const;
   title = 'Dataset';
+  icon = Database;
   params: Record<string, BlockParameter> = {
     dataset_source: {
       type: 'select',

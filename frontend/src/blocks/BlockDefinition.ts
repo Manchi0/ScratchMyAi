@@ -9,11 +9,13 @@ export interface BlockPort {
 }
 
 import { BlockParameter } from './BlockParameter';
+import type { ElementType } from 'react';
 
 export abstract class BlockDefinition {
   abstract type: string;
   abstract category: 'input' | 'output' | 'layer' | 'activation';
   abstract title: string;
+  abstract icon: ElementType;
   
   // Strongly-typed parameter configuration
   abstract params: Record<string, BlockParameter>;

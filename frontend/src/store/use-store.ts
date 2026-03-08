@@ -9,6 +9,7 @@ import {
   applyEdgeChanges,
   addEdge,
 } from "@xyflow/react";
+import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
 interface AppState {
   // Workflow Title
@@ -46,8 +47,26 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   onConnect: (connection) => {
-    set({
-      edges: addEdge(connection, get().edges),
+    set((state) => {
+      // Find the source node to steal its category color
+      const sourceNode = state.nodes.find((n) => n.id === connection.source);
+      let edgeColor = '#8b5cf6'; // default
+      
+      if (sourceNode && sourceNode.data.blockType) {
+        const def = getBlockDefinition(sourceNode.data.blockType as string);
+        if (def) edgeColor = def.color;
+      }
+
+      const newEdge = {
+        ...connection,
+        id: `e-${connection.source}-${connection.target}`,
+        type: 'wire',
+        data: { color: edgeColor }
+      } as Edge;
+
+      return {
+        edges: addEdge(newEdge, state.edges),
+      };
     });
   },
 

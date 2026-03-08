@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { getBlockDefinition } from '@/blocks/BlockRegistry';
 import { useStore } from '@/store/use-store';
+import { Upload } from 'lucide-react';
 
 export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
   const blockType = data.blockType as string;
@@ -18,7 +19,7 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
     );
   }
 
-  const { title, color, inputs, outputs, params: paramDefs } = definition;
+  const { title, color, icon: Icon, inputs, outputs, params: paramDefs } = definition;
 
   const handleParamChange = (key: string, value: any) => {
     updateNodeData(id, {
@@ -28,6 +29,8 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
       }
     });
   };
+
+  // ... (renderInput logic remains the same)
 
   const renderInput = (key: string, currentValue: any) => {
     const def = paramDefs[key];
@@ -77,15 +80,26 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
     
     if (def.type === 'file') {
        return (
-         <input 
-           type="file" 
-           accept={def.accept}
-           className="nodrag text-[10px] w-32 border rounded py-0.5 px-1 bg-white file:border-0 file:bg-gray-100 file:px-2 file:py-0.5 file:rounded file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-gray-200"
-           onChange={(e) => {
-             const file = e.target.files?.[0];
-             if (file) handleParamChange(key, file.name); // Store filename for display
-           }}
-         />
+         <div className="flex items-center gap-2 max-w-[120px]">
+           <label className="nodrag cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 p-1 rounded border border-gray-200 transition-colors shrink-0">
+             <Upload size={14} />
+             <input 
+               type="file" 
+               accept={def.accept}
+               className="hidden"
+               onChange={(e) => {
+                 const file = e.target.files?.[0];
+                 if (file) handleParamChange(key, file.name);
+               }}
+             />
+           </label>
+           <span 
+             className="text-[10px] text-gray-500 truncate" 
+             title={currentValue || 'Select file'}
+           >
+             {currentValue || 'none'}
+           </span>
+         </div>
        );
     }
 
@@ -115,9 +129,11 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
       >
         <div className="flex items-center gap-2">
           <div 
-            className="w-3 h-3 rounded-full" 
+            className="flex items-center justify-center w-6 h-6 rounded-full shadow-sm" 
             style={{ backgroundColor: color }}
-          />
+          >
+            {Icon && <Icon size={14} className="text-white" />}
+          </div>
           <span className="font-semibold text-sm text-gray-800">{title}</span>
         </div>
       </div>
