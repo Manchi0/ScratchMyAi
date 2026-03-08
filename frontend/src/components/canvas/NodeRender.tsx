@@ -1,11 +1,12 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { getBlockDefinition } from '@/blocks/BlockRegistry';
-import { Settings } from 'lucide-react';
+import { useStore } from '@/store/use-store';
 
-export const NodeRender = memo(({ data, selected }: NodeProps) => {
+export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
   const blockType = data.blockType as string;
-  const params = data.params as Record<string, any>;
+  const params = data.params as Record<string, any> || {};
+  const updateNodeData = useStore((state) => state.updateNodeData);
   
   const definition = getBlockDefinition(blockType);
 
@@ -17,7 +18,88 @@ export const NodeRender = memo(({ data, selected }: NodeProps) => {
     );
   }
 
-  const { title, color, inputs, outputs } = definition;
+  const { title, color, inputs, outputs, params: paramDefs } = definition;
+
+  const handleParamChange = (key: string, value: any) => {
+    updateNodeData(id, {
+      params: {
+        ...params,
+        [key]: value,
+      }
+    });
+  };
+
+  const renderInput = (key: string, currentValue: any) => {
+    const def = paramDefs[key];
+    if (!def) return null;
+
+    if (def.type === 'int' || def.type === 'float') {
+      return (
+        <input 
+          type="number"
+          className="nodrag w-16 text-right text-xs border rounded px-1 py-0.5 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance:textfield]"
+          value={currentValue ?? def.default}
+          min={def.min}
+          max={def.max}
+          step={def.type === 'int' ? 1 : 0.01}
+          onChange={(e) => {
+            const val = def.type === 'int' ? parseInt(e.target.value, 10) : parseFloat(e.target.value);
+            if (!isNaN(val)) handleParamChange(key, val);
+          }}
+        />
+      );
+    }
+
+    if (def.type === 'boolean') {
+      return (
+        <input 
+          type="checkbox"
+          className="nodrag rounded border-gray-300 text-primary focus:ring-primary h-3 w-3"
+          checked={currentValue ?? def.default}
+          onChange={(e) => handleParamChange(key, e.target.checked)}
+        />
+      );
+    }
+
+    if (def.type === 'select') {
+      return (
+        <select 
+          className="nodrag text-xs border rounded px-1 py-0.5 bg-white max-w-[80px]"
+          value={currentValue ?? def.default}
+          onChange={(e) => handleParamChange(key, e.target.value)}
+        >
+          {def.options.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      );
+    }
+    
+    if (def.type === 'file') {
+       return (
+         <input 
+           type="file" 
+           accept={def.accept}
+           className="nodrag text-[10px] w-32 border rounded py-0.5 px-1 bg-white file:border-0 file:bg-gray-100 file:px-2 file:py-0.5 file:rounded file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-gray-200"
+           onChange={(e) => {
+             const file = e.target.files?.[0];
+             if (file) handleParamChange(key, file.name); // Store filename for display
+           }}
+         />
+       );
+    }
+
+    // Fallback string rendering
+    const fallbackDef = def as any;
+    return (
+       <input 
+          type="text"
+          className="nodrag w-20 text-xs border rounded px-1 py-0.5"
+          value={currentValue ?? fallbackDef.default}
+          onChange={(e) => handleParamChange(key, e.target.value)}
+        />
+    );
+  };
 
   return (
     <div 
@@ -38,19 +120,18 @@ export const NodeRender = memo(({ data, selected }: NodeProps) => {
           />
           <span className="font-semibold text-sm text-gray-800">{title}</span>
         </div>
-        <Settings className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600" />
       </div>
 
       {/* Body / Params */}
       <div className="p-3 bg-white rounded-b-lg">
-        {Object.entries(params).length > 0 ? (
+        {Object.entries(paramDefs || {}).length > 0 ? (
           <div className="flex flex-col gap-2">
-            {Object.entries(params).map(([key, value]) => (
-              <div key={key} className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-medium">{key}</span>
-                <span className="text-gray-800 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 font-mono">
-                  {String(value)}
+            {Object.entries(paramDefs).map(([key, def]) => (
+              <div key={key} className="flex justify-between items-center text-xs gap-3">
+                <span className="text-gray-600 font-medium" title={def.label || key}>
+                  {def.label || key}
                 </span>
+                {renderInput(key, params[key])}
               </div>
             ))}
           </div>

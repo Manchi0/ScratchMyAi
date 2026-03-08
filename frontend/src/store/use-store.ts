@@ -23,6 +23,7 @@ interface AppState {
   onConnect: OnConnect;
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
+  updateNodeData: (nodeId: string, newData: Record<string, any>) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -52,4 +53,20 @@ export const useStore = create<AppState>((set, get) => ({
 
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
+  updateNodeData: (nodeId, newData) => {
+    set({
+      nodes: get().nodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...newData,
+            },
+          };
+        }
+        return node;
+      }),
+    });
+  },
 }));

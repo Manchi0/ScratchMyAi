@@ -8,13 +8,15 @@ export interface BlockPort {
   type: PortType;
 }
 
+import { BlockParameter } from './BlockParameter';
+
 export abstract class BlockDefinition {
   abstract type: string;
   abstract category: 'input' | 'output' | 'layer' | 'activation';
   abstract title: string;
   
-  // Default user-configurable parameters
-  abstract defaultParams: Record<string, any>;
+  // Strongly-typed parameter configuration
+  abstract params: Record<string, BlockParameter>;
   
   // Connections
   abstract inputs: BlockPort[];
@@ -35,13 +37,19 @@ export abstract class BlockDefinition {
   
   // Generate a new React Flow Node instance
   createNode(position: { x: number; y: number }): Node {
+    // Extract default values for the node's initial state
+    const initialParams = Object.entries(this.params).reduce((acc, [key, paramDef]) => {
+      acc[key] = paramDef.default;
+      return acc;
+    }, {} as Record<string, any>);
+
     return {
       id: `${this.type}-${Date.now()}`,
       type: 'neuralBlock', 
       position,
       data: {
         blockType: this.type,
-        params: { ...this.defaultParams }
+        params: initialParams
       }
     };
   }
