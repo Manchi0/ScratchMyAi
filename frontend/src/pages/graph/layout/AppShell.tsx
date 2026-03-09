@@ -12,8 +12,8 @@ import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
 import { useStore } from "@/store/use-store";
-import { NodeRender } from "@/pages/app/canvas/NodeRender";
-import { WireEdge } from "@/pages/app/canvas/WireEdge";
+import { NodeRender } from "@/pages/graph/canvas/NodeRender";
+import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
 const nodeTypes = {
@@ -26,11 +26,11 @@ const edgeTypes = {
 
 export function AppShell() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { 
-    nodes, 
-    edges, 
-    onNodesChange, 
-    onEdgesChange, 
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
     onConnect,
     setNodes
   } = useStore();
@@ -43,7 +43,7 @@ export function AppShell() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      
+
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       const type = e.dataTransfer.getData("application/reactflow");
 
