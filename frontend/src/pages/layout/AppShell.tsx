@@ -12,8 +12,8 @@ import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
 import { useStore } from "@/store/use-store";
-import { NodeRender } from "@/components/canvas/NodeRender";
-import { WireEdge } from "@/components/canvas/WireEdge";
+import { NodeRender } from "@/pages/app/canvas/NodeRender";
+import { WireEdge } from "@/pages/app/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
 const nodeTypes = {

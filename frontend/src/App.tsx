@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell } from '@/pages/app/layout/AppShell';
 
 const Home = () => {
   return (
