@@ -124,9 +124,9 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 flex items-center">
-          <div className="flex-grow border-t border-neutral-200"></div>
+          <div className="grow border-t border-neutral-200"></div>
           <span className="px-3 text-neutral-500 text-sm">Or</span>
-          <div className="flex-grow border-t border-neutral-200"></div>
+          <div className="grow border-t border-neutral-200"></div>
         </div>
 
         <button
