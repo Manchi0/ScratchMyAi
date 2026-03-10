@@ -138,8 +138,8 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
       </div>
 
       {/* Body / Params */}
-      <div className="p-3 bg-white rounded-b-lg">
-        {Object.entries(paramDefs || {}).length > 0 ? (
+      {Object.entries(paramDefs || {}).length > 0 ? (
+        <div className="p-3 bg-white rounded-b-lg">
           <div className="flex flex-col gap-2">
             {Object.entries(paramDefs).map(([key, def]) => (
               <div key={key} className="flex justify-between items-center text-xs gap-3">
@@ -150,12 +150,11 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="text-xs text-center text-gray-400 italic py-1">
-            No parameters
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="px-3 py-1 bg-white rounded-b-lg">
+        </div>
+      )}
 
       {/* Input Handles */}
       {inputs.map((input, index) => {

@@ -20,7 +20,7 @@ import { useStore } from "@/store/useStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
-import { loadWorkflow } from "@/lib/supabaseFunctions";
+import { loadGraph } from "@/lib/graphFunctions";
 
 const nodeTypes = {
   neuralBlock: NodeRender,
@@ -34,7 +34,7 @@ function AppShellContent() {
   const { id } = useParams<{ id?: string }>();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   // References for middle mouse button temporary pan mode
   const interactionModeRef = useRef(interactionMode);
@@ -73,27 +73,38 @@ function AppShellContent() {
     setEdges,
     setTitle,
     setWorkflowId,
+    setTrainingConfig,
   } = useStore();
 
-  // Load existing workflow or reset to a blank canvas
+  // Load existing graph or reset to a blank canvas
   useEffect(() => {
     if (id) {
-      loadWorkflow(id)
+      loadGraph(id)
         .then((row) => {
           setWorkflowId(row.id);
           setTitle(row.title);
           setNodes(row.nodes);
           setEdges(row.edges);
+          if (row.training_config) {
+            setTrainingConfig(row.training_config);
+          }
         })
-        .catch((err) => console.error("Failed to load workflow:", err));
+        .catch((err) => console.error("Failed to load graph:", err));
     } else {
       // New workflow — reset to defaults
       setWorkflowId(null);
       setTitle("Untitled");
       setNodes([]);
       setEdges([]);
+      // Reset training config to defaults
+      setTrainingConfig({
+        loss: "CrossEntropy",
+        optimizer: "Adam",
+        learning_rate: 0.001,
+        epochs: 5,
+      });
     }
-  }, [id, setWorkflowId, setTitle, setNodes, setEdges]);
+  }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, fitView]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -158,6 +169,8 @@ function AppShellContent() {
               deleteKeyCode="Delete"
               proOptions={{ hideAttribution: true }}
               style={{ backgroundColor: "#f8f7f4" }}
+              fitView
+              fitViewOptions={{ padding: 0.2 }}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
               <Controls showInteractive={false} />

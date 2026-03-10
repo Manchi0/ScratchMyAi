@@ -2,29 +2,29 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModelCard } from './ModelCard';
 import { useAuthStore } from '@/store/useAuthStore';
-import { listWorkflows, deleteWorkflow, type WorkflowSummary } from '@/lib/supabaseFunctions';
+import { listGraphs, deleteGraph, type GraphSummary } from '@/lib/graphFunctions';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
 
-  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
+  const [workflows, setWorkflows] = useState<GraphSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    listWorkflows(user.id)
+    listGraphs(user.id)
       .then(setWorkflows)
-      .catch((err) => console.error('Failed to load workflows:', err))
+      .catch((err) => console.error('Failed to load graphs:', err))
       .finally(() => setLoading(false));
   }, [user]);
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteWorkflow(id);
+      await deleteGraph(id);
       setWorkflows((prev) => prev.filter((w) => w.id !== id));
     } catch (err) {
-      console.error('Failed to delete workflow:', err);
+      console.error('Failed to delete graph:', err);
     }
   };
 

@@ -11,6 +11,13 @@ import {
 } from "@xyflow/react";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
+export interface TrainingConfig {
+  loss: string;
+  optimizer: string;
+  learning_rate: number;
+  epochs: number;
+}
+
 interface AppState {
   // Workflow identity
   workflowId: string | null;
@@ -29,6 +36,10 @@ interface AppState {
   setNodes: (nodes: Node[]) => void;
   setEdges: (edges: Edge[]) => void;
   updateNodeData: (nodeId: string, newData: Record<string, any>) => void;
+
+  // Training Configuration
+  trainingConfig: TrainingConfig;
+  setTrainingConfig: (config: Partial<TrainingConfig>) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -94,5 +105,21 @@ export const useStore = create<AppState>((set, get) => ({
         return node;
       }),
     });
+  },
+
+  trainingConfig: {
+    loss: "CrossEntropy",
+    optimizer: "Adam",
+    learning_rate: 0.001,
+    epochs: 5,
+  },
+
+  setTrainingConfig: (config) => {
+    set((state) => ({
+      trainingConfig: {
+        ...state.trainingConfig,
+        ...config,
+      },
+    }));
   },
 }));
