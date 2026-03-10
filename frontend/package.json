@@ -13,6 +13,7 @@
     "@ai-sdk/anthropic": "^3.0.47",
     "@ai-sdk/openai": "^3.0.33",
     "@ai-sdk/react": "^3.0.102",
+    "@supabase/supabase-js": "^2.99.0",
     "@xyflow/react": "^12.10.1",
     "ai": "^6.0.100",
     "class-variance-authority": "^0.7.1",
