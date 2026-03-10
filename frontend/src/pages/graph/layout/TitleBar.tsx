@@ -1,7 +1,36 @@
-import { useStore } from "@/store/use-store";
+import { useState } from "react";
+import { useStore } from "@/store/useStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { saveWorkflow } from "@/lib/supabaseFunctions";
 
 export function TitleBar() {
-  const { title, setTitle } = useStore();
+  const { workflowId, setWorkflowId, title, setTitle, nodes, edges } = useStore();
+  const user = useAuthStore((s) => s.user);
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    setSaved(false);
+
+    try {
+      const id = await saveWorkflow(user.id, {
+        id: workflowId,
+        title,
+        nodes,
+        edges,
+      });
+      setWorkflowId(id);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save workflow:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <header className="flex items-center justify-between h-12 px-2.5 border-b border-[#e8e7e2] bg-white shrink-0">
@@ -20,13 +49,11 @@ export function TitleBar() {
 
       <div className="w-24 flex justify-end">
         <button
-          onClick={() => {
-            // TODO: Implement save functionality
-            console.log("Saving graph...", title);
-          }}
+          onClick={handleSave}
+          disabled={saving}
           className="whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-neutral-900 text-white hover:bg-neutral-800 px-4 py-1.5 shadow-sm"
         >
-          Save
+          {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
         </button>
       </div>
     </header>

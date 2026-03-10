@@ -12,6 +12,10 @@ import {
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 
 interface AppState {
+  // Workflow identity
+  workflowId: string | null;
+  setWorkflowId: (id: string | null) => void;
+
   // Workflow Title
   title: string;
   setTitle: (title: string) => void;
@@ -28,6 +32,9 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set, get) => ({
+  workflowId: null,
+  setWorkflowId: (id) => set({ workflowId: id }),
+
   title: "Untitled",
   setTitle: (title) => set({ title }),
 

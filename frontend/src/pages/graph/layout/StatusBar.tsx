@@ -1,5 +1,5 @@
 import { Blocks, Cable } from "lucide-react";
-import { useStore } from "@/store/use-store";
+import { useStore } from "@/store/useStore";
 
 export function StatusBar() {
   const nodeCount = useStore((state) => state.nodes.length);

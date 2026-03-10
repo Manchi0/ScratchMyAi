@@ -1,9 +1,32 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModelCard } from './ModelCard';
+import { useAuthStore } from '@/store/useAuthStore';
+import { listWorkflows, deleteWorkflow, type WorkflowSummary } from '@/lib/supabaseFunctions';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+
+  const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    listWorkflows(user.id)
+      .then(setWorkflows)
+      .catch((err) => console.error('Failed to load workflows:', err))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteWorkflow(id);
+      setWorkflows((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      console.error('Failed to delete workflow:', err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] p-8">
@@ -18,13 +41,26 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <ModelCard
-            id="1"
-            title="My First Neural Net"
-            lastEdited="2 hours ago"
-          />
-        </div>
+        {loading ? (
+          <p className="text-neutral-500">Loading…</p>
+        ) : workflows.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-neutral-400 text-lg">No models yet.</p>
+            <p className="text-neutral-400 text-sm mt-1">Click "+ New Model" to get started.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {workflows.map((w) => (
+              <ModelCard
+                key={w.id}
+                id={w.id}
+                title={w.title}
+                updatedAt={w.updated_at}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import DashboardPage from '@/pages/dashboard/DashboardPage';
 import { ReactFlowProvider } from '@xyflow/react';
 import { AppShell } from '@/pages/graph/layout/AppShell';
 import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/store/use-auth-store';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const AppShellWrapper = () => {
   return (
@@ -72,6 +72,14 @@ const App = () => {
           />
           <Route
             path="/graph"
+            element={
+              <ProtectedRoute>
+                <AppShellWrapper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/graph/:id"
             element={
               <ProtectedRoute>
                 <AppShellWrapper />

@@ -1,4 +1,5 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import {
   ReactFlow,
   Background,
@@ -11,10 +12,11 @@ import "@xyflow/react/dist/style.css";
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
-import { useStore } from "@/store/use-store";
+import { useStore } from "@/store/useStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
+import { loadWorkflow } from "@/lib/supabaseFunctions";
 
 const nodeTypes = {
   neuralBlock: NodeRender,
@@ -25,6 +27,7 @@ const edgeTypes = {
 };
 
 export function AppShell() {
+  const { id } = useParams<{ id?: string }>();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const {
     nodes,
@@ -32,8 +35,31 @@ export function AppShell() {
     onNodesChange,
     onEdgesChange,
     onConnect,
-    setNodes
+    setNodes,
+    setEdges,
+    setTitle,
+    setWorkflowId,
   } = useStore();
+
+  // Load existing workflow or reset to a blank canvas
+  useEffect(() => {
+    if (id) {
+      loadWorkflow(id)
+        .then((row) => {
+          setWorkflowId(row.id);
+          setTitle(row.title);
+          setNodes(row.nodes);
+          setEdges(row.edges);
+        })
+        .catch((err) => console.error("Failed to load workflow:", err));
+    } else {
+      // New workflow — reset to defaults
+      setWorkflowId(null);
+      setTitle("Untitled");
+      setNodes([]);
+      setEdges([]);
+    }
+  }, [id, setWorkflowId, setTitle, setNodes, setEdges]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
