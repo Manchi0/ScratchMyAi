@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   ReactFlow,
@@ -6,8 +6,12 @@ import {
   Controls,
   MiniMap,
   BackgroundVariant,
+  SelectionMode,
+  useReactFlow,
+  ReactFlowProvider,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { Hand, MousePointer2 } from "lucide-react";
 
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
@@ -26,9 +30,39 @@ const edgeTypes = {
   wire: WireEdge,
 };
 
-export function AppShell() {
+function AppShellContent() {
   const { id } = useParams<{ id?: string }>();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
+  const { screenToFlowPosition } = useReactFlow();
+
+  // References for middle mouse button temporary pan mode
+  const interactionModeRef = useRef(interactionMode);
+  interactionModeRef.current = interactionMode;
+  const previousModeRef = useRef<'pan' | 'select' | null>(null);
+
+  useEffect(() => {
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.button === 1) { // Middle mouse button
+        previousModeRef.current = interactionModeRef.current;
+        setInteractionMode('pan');
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.button === 1 && previousModeRef.current) {
+        setInteractionMode(previousModeRef.current);
+        previousModeRef.current = null;
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, []);
   const {
     nodes,
     edges,
@@ -70,10 +104,9 @@ export function AppShell() {
     (e: React.DragEvent) => {
       e.preventDefault();
 
-      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       const type = e.dataTransfer.getData("application/reactflow");
 
-      if (!type || !reactFlowBounds) {
+      if (!type) {
         return;
       }
 
@@ -81,18 +114,18 @@ export function AppShell() {
       const definition = getBlockDefinition(type);
       if (!definition) return;
 
-      // Ensure drop is inside the canvas
-      let position = {
-        x: e.clientX - reactFlowBounds.left,
-        y: e.clientY - reactFlowBounds.top,
-      };
+      // Project the position using ReactFlow's helper
+      const position = screenToFlowPosition({
+        x: e.clientX,
+        y: e.clientY,
+      });
 
       // Create new node using BlockDefinition method
       const newNode = definition.createNode(position);
 
       setNodes([...nodes, newNode]);
     },
-    [reactFlowWrapper, nodes, setNodes]
+    [nodes, setNodes, screenToFlowPosition]
   );
 
   return (
@@ -118,11 +151,41 @@ export function AppShell() {
               onDrop={onDrop}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               minZoom={0.1}
+              panOnDrag={interactionMode === 'pan' ? [0, 1] : [1]}
+              selectionOnDrag={interactionMode === 'select'}
+              panOnScroll={true}
+              selectionMode={SelectionMode.Partial}
+              deleteKeyCode="Delete"
               proOptions={{ hideAttribution: true }}
               style={{ backgroundColor: "#f8f7f4" }}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
               <Controls showInteractive={false} />
+
+              {/* Interaction Mode Toolbar */}
+              <div className="absolute bottom-24 left-3.5 z-10 flex flex-col bg-[#fefefe] shadow-[0_0_2px_1px_rgba(0,0,0,0.08)] rounded-[7px] overflow-hidden h-11.5 w-6">
+                <button
+                  onClick={() => setInteractionMode('pan')}
+                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] border-b-0 transition-colors ${interactionMode === 'pan'
+                    ? 'bg-stone-100 text-stone-900'
+                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
+                    }`}
+                  title="Pan Mode"
+                >
+                  <Hand size={14} />
+                </button>
+                <button
+                  onClick={() => setInteractionMode('select')}
+                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] transition-colors ${interactionMode === 'select'
+                    ? 'bg-stone-100 text-stone-900'
+                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
+                    }`}
+                  title="Select Mode"
+                >
+                  <MousePointer2 size={14} />
+                </button>
+              </div>
+
               {/* <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" /> */}
             </ReactFlow>
           </div>
@@ -131,5 +194,13 @@ export function AppShell() {
         <StatusBar />
       </div>
     </>
+  );
+}
+
+export function AppShell() {
+  return (
+    <ReactFlowProvider>
+      <AppShellContent />
+    </ReactFlowProvider>
   );
 }
