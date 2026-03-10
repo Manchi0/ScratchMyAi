@@ -12,9 +12,10 @@ anthropic==0.44.0
 supabase==2.11.0
 
 # PyTorch (CPU — swap for cu121 build for GPU)
-torch==2.5.1
-torchvision==0.20.1
-numpy==2.2.1
+torch==2.10.0
+torchvision==0.25.0
+numpy>=2.2.1
 
 # Utils
 python-multipart==0.0.20
+modal
