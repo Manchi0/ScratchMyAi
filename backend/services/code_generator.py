@@ -197,14 +197,22 @@ def _format_value(v: Any) -> str:
 
 
 def _format_layer(node_type: str, params: dict[str, Any]) -> str:
+    # Filter out common UI/ReactFlow metadata that are not PyTorch constructor args
+    ui_metadata = {
+        "position", "width", "height", "selected", "dragging", 
+        "data", "measured", "type", "id", "name",
+        "positionAbsolute", "dragging", "selected", "selectable", "deletable", "draggable"
+    }
+    clean_params = {k: v for k, v in params.items() if k not in ui_metadata}
+
     if node_type in WRAPPER_TYPES:
         class_name = WRAPPER_CLASS_NAMES[node_type]
     else:
         class_name = f"nn.{CLASS_NAMES[node_type]}"
 
-    if not params:
+    if not clean_params:
         return f"{class_name}()"
-    args = ", ".join(f"{k}={_format_value(v)}" for k, v in params.items())
+    args = ", ".join(f"{k}={_format_value(v)}" for k, v in clean_params.items())
     return f"{class_name}({args})"
 
 
@@ -297,11 +305,23 @@ if __name__ == "__main__":
 """
 
 
-def graph_json_to_code(graph: dict[str, Any]) -> str:
+def graph_json_to_code(graph: dict[str, Any], include_base64_export: bool = False) -> str:
     """Convert the graph JSON format into a standalone, runnable Python/PyTorch
     training script. Handles dataset loading, model building, training loop,
     and evaluation.
     """
+    base64_export_code = "    train()"
+    if include_base64_export:
+        base64_export_code = """    model, metrics = train()
+    print(f"METRIC_JSON:{json.dumps(metrics)}")
+    import io
+    import base64
+    print("====MODEL_WEIGHTS_BEGIN====")
+    buf = io.BytesIO()
+    torch.save(model.state_dict(), buf)
+    print(base64.b64encode(buf.getvalue()).decode('utf-8'))
+    print("====MODEL_WEIGHTS_END====")"""
+
     layers = graph.get("layers", [])
     connections = graph.get("connections", [])
     dataset_name = graph.get("dataset", "")
@@ -445,6 +465,7 @@ test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
 
     return f"""\
 import math
+import json
 import torch
 import torch.nn as nn
 {dataset_code}{wrapper_code}
@@ -463,6 +484,7 @@ def train():
 
     # Training loop
     model.train()
+    avg_loss = 0.0
     for epoch in range(1, {epochs} + 1):
         running_loss = 0.0
         for inputs, targets in train_loader:
@@ -487,8 +509,15 @@ def train():
             _, predicted = outputs.max(1)
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
-    print(f"Test accuracy: {{100. * correct / total:.2f}}%")
+    accuracy_ratio = (correct / total) if total else 0.0
+    print(f"Test accuracy: {{100. * accuracy_ratio:.2f}}%")
+    metrics = {{
+        "accuracy": float(accuracy_ratio),
+        "loss": float(avg_loss),
+        "epochs": int({epochs}),
+    }}
+    return model, metrics
 
 if __name__ == "__main__":
-    train()
+{base64_export_code}
 """

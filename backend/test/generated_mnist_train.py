@@ -54,6 +54,7 @@ def train():
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
     print(f"Test accuracy: {100. * correct / total:.2f}%")
+    return model, 100. * correct / total
 
 if __name__ == "__main__":
     train()

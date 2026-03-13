@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 
-interface ModelCardProps {
+interface GraphCardProps {
     id: string;
     title: string;
     updatedAt: string;
     onDelete: (id: string) => void;
 }
 
-export function ModelCard({ id, title, updatedAt, onDelete }: ModelCardProps) {
+export function GraphCard({ id, title, updatedAt, onDelete }: GraphCardProps) {
     const navigate = useNavigate();
 
     const formattedDate = new Date(updatedAt).toLocaleDateString(undefined, {

@@ -20,8 +20,8 @@ export interface TrainingConfig {
 
 interface AppState {
   // Workflow identity
-  workflowId: string | null;
-  setWorkflowId: (id: string | null) => void;
+  graphId: string | null;
+  setGraphId: (id: string | null) => void;
 
   // Workflow Title
   title: string;
@@ -43,8 +43,8 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set, get) => ({
-  workflowId: null,
-  setWorkflowId: (id) => set({ workflowId: id }),
+  graphId: null,
+  setGraphId: (id) => set({ graphId: id }),
 
   title: "Untitled",
   setTitle: (title) => set({ title }),

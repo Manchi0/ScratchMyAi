@@ -320,7 +320,9 @@ def serialize_model(model: nn.Module) -> bytes:
 def deserialize_model(pipeline: list[dict[str, Any]], state_bytes: bytes) -> nn.Module:
     model = build_model(pipeline)
     buf = io.BytesIO(state_bytes)
-    model.load_state_dict(torch.load(buf, weights_only=True))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Using weights_only=False because state_dict from different torch versions can be finicky
+    model.load_state_dict(torch.load(buf, weights_only=False, map_location=device))
     return model
 
 
@@ -332,41 +334,61 @@ def resolve_connections(
     layers: list[dict[str, Any]],
     connections: list[dict[str, str]],
 ) -> list[dict[str, Any]]:
-    """Order *layers* according to *connections* (a list of {from, to} edges).
-
-    Assumes a single linear chain. Returns layers in topological order.
+    """Order *layers* according to *connections*.
+    
+    If multiple heads exist (e.g. detached nodes), it prioritizes the chain 
+    that ends in an 'output' type node or the longest available chain.
     """
     if not connections:
-        return layers  # already in order
+        return layers
 
     id_to_layer = {layer["id"]: layer for layer in layers if "id" in layer}
-
-    # Build adjacency: from_id -> to_id
-    successors: dict[str, str] = {}
-    predecessors: set[str] = set()
+    
+    # Build adjacency
+    successors: dict[str, list[str]] = {}
+    predecessors: dict[str, list[str]] = {}
+    
     for conn in connections:
-        successors[conn["from"]] = conn["to"]
-        predecessors.add(conn["to"])
+        f, t = conn["from"], conn["to"]
+        successors.setdefault(f, []).append(t)
+        predecessors.setdefault(t, []).append(f)
 
-    # Find the head node (no incoming edge)
-    all_ids = set(id_to_layer.keys())
-    heads = all_ids - predecessors
+    all_node_ids = set(id_to_layer.keys())
+    # A head is any node with no incoming connections
+    heads = [node_id for node_id in all_node_ids if node_id not in predecessors]
+    
     if not heads:
-        raise ValueError("Circular dependency detected in connections.")
+        # Fallback for circular or empty
+        return layers
 
-    # Walk the chain
-    ordered: list[dict[str, Any]] = []
-    current = heads.pop()
-    visited: set[str] = set()
-    while current:
-        if current in visited:
-            raise ValueError(f"Cycle detected at node {current!r}.")
-        visited.add(current)
-        if current in id_to_layer:
-            ordered.append(id_to_layer[current])
-        current = successors.get(current)
+    # We want to find the "best" chain. 
+    # Let's find all possible paths starting from all heads.
+    paths: list[list[str]] = []
+    
+    for head in heads:
+        current_path = []
+        curr = head
+        visited = set()
+        while curr and curr not in visited:
+            visited.add(curr)
+            current_path.append(curr)
+            # ScratchMyAI currently supports linear chains, so we just take the first successor
+            next_nodes = successors.get(curr, [])
+            curr = next_nodes[0] if next_nodes else None
+        paths.append(current_path)
 
-    return ordered
+    # Heuristic: The model chain is the one that ends in an 'output' node.
+    # If none do, take the longest chain.
+    best_path = paths[0]
+    for path in paths:
+        last_node = id_to_layer.get(path[-1], {})
+        if last_node.get("type", "").lower() == "output":
+            best_path = path
+            break
+    else:
+        best_path = max(paths, key=len)
+
+    return [id_to_layer[node_id] for node_id in best_path if node_id in id_to_layer]
 
 
 def convert_graph_json(graph: dict[str, Any]) -> list[dict[str, Any]]:

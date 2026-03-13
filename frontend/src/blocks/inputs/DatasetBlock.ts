@@ -14,6 +14,7 @@ export class DatasetBlock extends BlockDefinition {
       label: 'Source',
       options: [
         { label: 'MNIST', value: 'mnist' },
+        { label: 'FashionMNIST', value: 'fashionmnist' },
         { label: 'CIFAR-10', value: 'cifar10' },
         { label: 'Custom File', value: 'custom' }
       ]
