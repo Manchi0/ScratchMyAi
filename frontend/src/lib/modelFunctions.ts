@@ -20,6 +20,21 @@ export async function listTrainedModels(userId: string): Promise<TrainedModelSum
   return data || [];
 }
 
+export async function deleteTrainedModel(modelId: string): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const res = await fetch(`http://localhost:8000/models/${modelId}`, {
+      method: 'DELETE',
+      headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+      }
+  });
+  
+  if (!res.ok) {
+      throw new Error(`Failed to delete model: ${res.status}`);
+  }
+}
+
 export async function predictModel(modelId: string, inputData: any[]): Promise<any[]> {
     const { data: { session } } = await supabase.auth.getSession();
     

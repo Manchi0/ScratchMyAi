@@ -1,0 +1,101 @@
+{
+  "dataset": "cifar10",
+  "layers": [
+    {
+      "id": "flatten-1773432945469",
+      "type": "flatten",
+      "end_dim": -1,
+      "start_dim": 1
+    },
+    {
+      "id": "linear-1773433415905",
+      "type": "linear",
+      "bias": true,
+      "in_features": 3072,
+      "out_features": 256
+    },
+    {
+      "id": "batchnorm1d-1773433428710",
+      "type": "batchnorm1d",
+      "eps": 0.00001,
+      "affine": true,
+      "momentum": 0.1,
+      "num_features": 256
+    },
+    {
+      "id": "relu-1773433444939",
+      "type": "relu"
+    },
+    {
+      "id": "linear-1773433453453",
+      "type": "linear",
+      "bias": true,
+      "in_features": 256,
+      "out_features": 128
+    },
+    {
+      "id": "batchnorm1d-1773433483408",
+      "type": "batchnorm1d",
+      "eps": 0.00001,
+      "affine": true,
+      "momentum": 0.1,
+      "num_features": 128
+    },
+    {
+      "id": "relu-1773433511798",
+      "type": "relu"
+    },
+    {
+      "id": "linear-1773433523089",
+      "type": "linear",
+      "bias": true,
+      "in_features": 128,
+      "out_features": 10
+    },
+    {
+      "id": "output-1773433541653",
+      "type": "output",
+      "name": "predictions"
+    }
+  ],
+  "connections": [
+    {
+      "from": "flatten-1773432945469",
+      "to": "linear-1773433415905"
+    },
+    {
+      "from": "linear-1773433415905",
+      "to": "batchnorm1d-1773433428710"
+    },
+    {
+      "from": "batchnorm1d-1773433428710",
+      "to": "relu-1773433444939"
+    },
+    {
+      "from": "relu-1773433444939",
+      "to": "linear-1773433453453"
+    },
+    {
+      "from": "linear-1773433453453",
+      "to": "batchnorm1d-1773433483408"
+    },
+    {
+      "from": "batchnorm1d-1773433483408",
+      "to": "relu-1773433511798"
+    },
+    {
+      "from": "relu-1773433511798",
+      "to": "linear-1773433523089"
+    },
+    {
+      "from": "linear-1773433523089",
+      "to": "output-1773433541653"
+    }
+  ],
+  "training_config": {
+    "loss": "CrossEntropy",
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "epochs": 15
+  }
+}

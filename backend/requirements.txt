@@ -14,7 +14,8 @@ supabase==2.11.0
 # PyTorch (CPU — swap for cu121 build for GPU)
 torch==2.10.0
 torchvision==0.25.0
-numpy>=2.2.1
+# Avoid NumPy 2.4+ VisibleDeprecationWarning in torchvision CIFAR pickle loader
+numpy>=2.2.1,<2.4
 
 # Utils
 python-multipart==0.0.20

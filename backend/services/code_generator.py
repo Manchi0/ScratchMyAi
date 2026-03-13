@@ -279,6 +279,9 @@ def pipeline_to_code(pipeline: list[dict[str, Any]]) -> str:
 
     return f"""\
 import math
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 import torch
 import torch.nn as nn
 {wrapper_code}
@@ -305,22 +308,43 @@ if __name__ == "__main__":
 """
 
 
-def graph_json_to_code(graph: dict[str, Any], include_base64_export: bool = False) -> str:
+def graph_json_to_code(
+    graph: dict[str, Any],
+    include_base64_export: bool = False,
+    include_file_export: bool = False,
+) -> str:
     """Convert the graph JSON format into a standalone, runnable Python/PyTorch
     training script. Handles dataset loading, model building, training loop,
     and evaluation.
     """
     base64_export_code = "    train()"
-    if include_base64_export:
+    if include_file_export:
         base64_export_code = """    model, metrics = train()
-    print(f"METRIC_JSON:{json.dumps(metrics)}")
+    print(f"METRIC_JSON:{json.dumps(metrics)}", flush=True)
+    artifact_path = "/tmp/model_state.pt"
+    torch.save(model.state_dict(), artifact_path)
+    print(f"MODEL_FILE:{artifact_path}", flush=True)
+    # Keep process alive briefly so orchestrator can fetch file before sandbox teardown.
+    import time
+    time.sleep(8)"""
+    elif include_base64_export:
+        base64_export_code = """    model, metrics = train()
+    print(f"METRIC_JSON:{json.dumps(metrics)}", flush=True)
     import io
     import base64
-    print("====MODEL_WEIGHTS_BEGIN====")
+    import sys
+    import time
+    print("====MODEL_WEIGHTS_BEGIN====", flush=True)
     buf = io.BytesIO()
     torch.save(model.state_dict(), buf)
-    print(base64.b64encode(buf.getvalue()).decode('utf-8'))
-    print("====MODEL_WEIGHTS_END====")"""
+    b64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+    # Write in small 8KB chunks with a micro-sleep to avoid Modal Sandbox stdout rate limits.
+    chunk_size = 8192
+    for i in range(0, len(b64_str), chunk_size):
+        print(b64_str[i:i + chunk_size], flush=True)
+        time.sleep(0.015)
+    sys.stdout.flush()
+    print("====MODEL_WEIGHTS_END====", flush=True)"""
 
     layers = graph.get("layers", [])
     connections = graph.get("connections", [])
@@ -466,6 +490,9 @@ test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
     return f"""\
 import math
 import json
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 import torch
 import torch.nn as nn
 {dataset_code}{wrapper_code}

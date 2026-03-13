@@ -7,6 +7,7 @@ interface InferenceTabProps {
   trainedModels: TrainedModelSummary[];
   selectedModel: TrainedModelSummary | null;
   onSelectModel: (model: TrainedModelSummary) => void;
+  onDeleteModel: (id: string) => void;
   onPredict: (batch: any[]) => Promise<any[]>;
 }
 
@@ -14,6 +15,7 @@ export function InferenceTab({
   trainedModels, 
   selectedModel, 
   onSelectModel, 
+  onDeleteModel,
   onPredict 
 }: InferenceTabProps) {
   if (trainedModels.length === 0) {
@@ -36,6 +38,7 @@ export function InferenceTab({
             model={m}
             isSelected={selectedModel?.id === m.id}
             onSelect={onSelectModel}
+            onDelete={onDeleteModel}
           />
         ))}
       </div>
@@ -48,7 +51,7 @@ export function InferenceTab({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <DrawCanvas onPredict={onPredict} />
+            <DrawCanvas onPredict={onPredict} dataset={selectedModel.dataset} />
           </div>
         )}
       </div>

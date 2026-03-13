@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BlockRegistry } from '@/blocks/BlockRegistry';
 
 export function Sidebar() {
@@ -8,11 +9,24 @@ export function Sidebar() {
   };
 
   const categories = ['input', 'output', 'layer', 'activation'] as const;
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    input: true,
+    output: true,
+    layer: true,
+    activation: true,
+  });
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
 
   return (
     <aside className="hidden md:flex w-64 bg-white border-r border-[#e8e7e2] p-4 flex-col gap-4 overflow-y-auto">
       <div>
-        <h2 className="text-sm font-semibold">Blocks</h2>
+        <h2 className="text-lg font-semibold">Blocks</h2>
       </div>
       
       <div className="flex flex-col gap-6">
@@ -22,13 +36,20 @@ export function Sidebar() {
           );
 
           if (blocksInCategory.length === 0) return null;
+          const isExpanded = expandedCategories[category] ?? true;
+          const CategoryIcon = isExpanded ? ChevronDown : ChevronRight;
 
           return (
             <div key={category} className="flex flex-col gap-2">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                {category}s
-              </h3>
-              <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className="w-full flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-500 transition-colors"
+              >
+                <span>{category}s</span>
+                <CategoryIcon size={14} />
+              </button>
+              {isExpanded && <div className="flex flex-col gap-2">
                 {blocksInCategory.map((block) => {
                   const Icon = block.icon;
                   return (
@@ -48,7 +69,7 @@ export function Sidebar() {
                     <span className="text-sm font-medium text-gray-700">{block.title}</span>
                   </div>
                 )})}
-              </div>
+              </div>}
             </div>
           );
         })}

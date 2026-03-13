@@ -59,6 +59,17 @@ def training_stream_generator(request: TrainRequest, user_id: str):
     final_accuracy = None
     final_loss = None
     final_epochs = None
+    saw_keyboard_interrupt = False
+
+    # CIFAR-10 runs can exceed short sandbox limits due to dataset download + CPU transforms.
+    training_config = graph_payload.get("training_config", {})
+    try:
+        configured_epochs = int(training_config.get("epochs", 10))
+    except Exception:
+        configured_epochs = 10
+    ds_key = str(selected_dataset or "").lower().strip()
+    per_epoch_seconds = 55 if ds_key in ("cifar10", "cifar-10") else 20
+    sandbox_timeout = max(300, min(3600, 180 + configured_epochs * per_epoch_seconds))
 
     loss_pattern = re.compile(r"Loss:\s*([0-9]+(?:\.[0-9]+)?)")
     accuracy_pattern = re.compile(r"Test accuracy:\s*([0-9]+(?:\.[0-9]+)?)%")
@@ -87,15 +98,18 @@ def training_stream_generator(request: TrainRequest, user_id: str):
 
     def is_real_error_line(line: str) -> bool:
         lowered = line.lower()
+        # Exclude Python warnings — they are informational, not failures.
+        if "warning" in lowered or "deprecat" in lowered:
+            return False
         error_markers = (
             "traceback",
-            "error",
-            "exception",
-            "failed",
             "runtimeerror",
             "valueerror",
             "typeerror",
             "assertionerror",
+            "modulenotfounderror",
+            "attributeerror",
+            "indexerror",
         )
         return any(marker in lowered for marker in error_markers)
 
@@ -105,11 +119,12 @@ def training_stream_generator(request: TrainRequest, user_id: str):
         with app.run():
             # gpu="any" ensures it gets scheduled on whichever GPU is free (T4, L4, A10g)
             yield f"data: {json.dumps({'type': 'log', 'message': 'Provisioning GPU sandbox (can take up to 60s on cold start)...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'log', 'message': f'Using sandbox timeout: {sandbox_timeout}s'})}\n\n"
             sandbox = modal.Sandbox.create(
-                "python", "-c", code,
-                image=modal.Image.debian_slim().pip_install("torch", "torchvision"),
+                "python", "-u", "-c", code,
+                image=modal.Image.debian_slim().pip_install("torch", "torchvision", "numpy<2.4"),
                 gpu="any",
-                timeout=300,
+                timeout=sandbox_timeout,
                 app=app,
             )
             yield f"data: {json.dumps({'type': 'log', 'message': 'Sandbox started. Streaming logs...'})}\n\n"
@@ -148,19 +163,18 @@ def training_stream_generator(request: TrainRequest, user_id: str):
                         except Exception:
                             pass
 
-                    loss_match = loss_pattern.search(stripped)
-                    if loss_match:
-                        final_loss = float(loss_match.group(1))
+                loss_match = loss_pattern.search(stripped)
+                if loss_match:
+                    final_loss = float(loss_match.group(1))
 
-                    accuracy_match = accuracy_pattern.search(stripped)
-                    if accuracy_match:
-                        final_accuracy = float(accuracy_match.group(1)) / 100.0
+                accuracy_match = accuracy_pattern.search(stripped)
+                if accuracy_match:
+                    final_accuracy = float(accuracy_match.group(1)) / 100.0
 
-                    # Hide machine-readable metric line from UI logs.
-                    if stripped.startswith("METRIC_JSON:"):
-                        continue
+                if stripped.startswith("METRIC_JSON:"):
+                    continue
 
-                    yield f"data: {json.dumps({'type': 'log', 'message': stripped})}\n\n"
+                yield f"data: {json.dumps({'type': 'log', 'message': stripped})}\n\n"
 
             for message in sandbox.stderr:
                 stripped_err = normalize_line(message)
@@ -168,19 +182,27 @@ def training_stream_generator(request: TrainRequest, user_id: str):
                     continue
                 if is_progress_noise(stripped_err):
                     continue
+                if "keyboardinterrupt" in stripped_err.lower():
+                    saw_keyboard_interrupt = True
                 line_type = "error" if is_real_error_line(stripped_err) else "log"
                 yield f"data: {json.dumps({'type': line_type, 'message': stripped_err})}\n\n"
 
             sandbox.wait()
             exit_code = sandbox.returncode
     except Exception as e:
-        yield f"data: {json.dumps({'type': 'error', 'message': f'Failed to start sandbox: {str(e)}'})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'message': f'Sandbox execution failed: {str(e)}'})}\n\n"
         return
 
     if exit_code == 0 and weights_b64:
         yield f"data: {json.dumps({'type': 'log', 'message': 'Training complete! Saving model to registry...'})}\n\n"
         try:
             weights_bytes = base64.b64decode(weights_b64)
+
+            if not weights_bytes or len(weights_bytes) < 1024:
+                raise ValueError(
+                    f"Model artifact was empty or unexpectedly small ({len(weights_bytes) if weights_bytes else 0} bytes)"
+                )
+
             file_path = f"{user_id}/{uuid.uuid4().hex[:8]}.pt"
             supabase = get_supabase()
             training_time_seconds = round(time.perf_counter() - training_started_at, 3)
@@ -211,4 +233,9 @@ def training_stream_generator(request: TrainRequest, user_id: str):
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': f'Failed to save to Supabase: {str(e)}'})}\n\n"
     else:
-        yield f"data: {json.dumps({'type': 'error', 'message': f'Training failed with exit code {exit_code}'})}\n\n"
+        error_message = f"Training failed with exit code {exit_code}"
+        if exit_code == 0 and not weights_b64:
+            error_message = "Training finished but model artifact was missing or truncated in logs"
+        if saw_keyboard_interrupt:
+            error_message += " (likely sandbox timeout/interruption; try fewer epochs or higher timeout)"
+        yield f"data: {json.dumps({'type': 'error', 'message': error_message})}\n\n"

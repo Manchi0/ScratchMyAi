@@ -29,7 +29,16 @@ class InferenceService:
         print(f"Downloading weights from {weights_path}...", flush=True)
         res = self.supabase.storage.from_(self.bucket).download(weights_path)
         print(f"Weights downloaded, size: {len(res)} bytes", flush=True)
-        
+
+        # PyTorch zip-format .pt files start with the magic bytes PK\x03\x04.
+        # A truncated upload (e.g. from a buffered stdout race) will fail with
+        # a confusing "negative seek value" error — catch it early.
+        if len(res) < 256 or res[:4] != b"PK\x03\x04":
+            raise ValueError(
+                f"Weights file appears corrupted or truncated ({len(res)} bytes). "
+                "Please retrain the model to generate a valid checkpoint."
+            )
+
         # 3. Instantiate PyTorch model
         print("Instantiating model...", flush=True)
         pipeline = convert_graph_json(graph_json)
