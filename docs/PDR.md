@@ -20,7 +20,7 @@ The strongest opportunities are now in reliability hardening, architectural main
 
 - Build a model visually on a graph canvas
 - Validate architecture and tensor compatibility
-- Train models locally or via RunPod-backed GPU path
+- Train models locally or via Modal-backed GPU path
 - View real-time training metrics over WebSocket
 - Save trained models and run inference later
 - Upload and use custom datasets
@@ -59,7 +59,7 @@ The strongest opportunities are now in reliability hardening, architectural main
 
 - Framework: FastAPI + Pydantic
 - ML engine: PyTorch dynamic model building from graph schema
-- Optional acceleration: RunPod Flash route for training/inference
+- Optional acceleration: Modal functions for training/inference
 - Dataset handling: built-in torchvision datasets + custom dataset upload pipeline
 - Storage: Supabase + GCS signed URL pattern for large model/dataset files
 
@@ -107,7 +107,7 @@ The strongest opportunities are now in reliability hardening, architectural main
 2. Backend normalizes node types and params
 3. Backend validates graph structure (input/output constraints, cycles, connectivity)
 4. Backend compiles graph to dynamic PyTorch model
-5. Training runs locally or on RunPod based on environment config
+5. Training runs locally or on Modal based on environment config
 6. Epoch/batch events stream to frontend over WebSocket
 7. Completion returns final metrics and optional model payload metadata
 
@@ -116,7 +116,7 @@ The strongest opportunities are now in reliability hardening, architectural main
 1. Frontend selects trained model and prepares input payload
 2. Backend retrieves model metadata + state dict from storage
 3. Backend validates input shape against expected model shape
-4. Backend routes to local or RunPod inference
+4. Backend routes to local or Modal inference
 5. Backend returns output tensor + shape + timing metadata
 
 ## Dataset flow

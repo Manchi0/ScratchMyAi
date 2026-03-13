@@ -1,0 +1,58 @@
+{
+  "dataset": "mnist",
+  "layers": [
+    {
+      "id": "flatten-1773160513837",
+      "type": "flatten",
+      "start_dim": 1,
+      "end_dim": -1
+    },
+    {
+      "id": "linear-1773160536700",
+      "type": "linear",
+      "bias": true,
+      "in_features": 784,
+      "out_features": 128
+    },
+    {
+      "id": "relu-1773160555531",
+      "type": "relu"
+    },
+    {
+      "id": "linear-1773160568404",
+      "type": "linear",
+      "bias": true,
+      "in_features": 128,
+      "out_features": 10
+    },
+    {
+      "id": "output-1773160607715",
+      "type": "output",
+      "name": "predictions"
+    }
+  ],
+  "connections": [
+    {
+      "from": "flatten-1773160513837",
+      "to": "linear-1773160536700"
+    },
+    {
+      "from": "linear-1773160536700",
+      "to": "relu-1773160555531"
+    },
+    {
+      "from": "relu-1773160555531",
+      "to": "linear-1773160568404"
+    },
+    {
+      "from": "linear-1773160568404",
+      "to": "output-1773160607715"
+    }
+  ],
+  "training_config": {
+    "loss": "CrossEntropy",
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "epochs": 10
+  }
+}

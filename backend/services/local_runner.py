@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import io
+import json
 import math
+from pathlib import Path
 from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 # Nodes that are not PyTorch layers — handled by the pipeline runner
 CONTROL_NODES = {"dataset", "output"}
@@ -203,15 +206,32 @@ LAYER_REGISTRY: dict[str, type[nn.Module]] = {
     "pixelshuffle": nn.PixelShuffle,    # super-resolution
 }
 
+# Register all activation names as direct layer types so that
+# {"type": "relu"} works in the new JSON format (not just {"type": "activation", "name": "relu"}).
+for _act_name, _act_cls in ACTIVATION_REGISTRY.items():
+    LAYER_REGISTRY.setdefault(_act_name, _act_cls)
+
 
 # ---------------------------------------------------------------------------
 # Pipeline parsing
 # ---------------------------------------------------------------------------
 
+# Fields to strip from node dicts — they are metadata, not constructor kwargs
+_META_KEYS = {"type", "id", "name"}
+
+
 def _parse_node(node: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-    """Return (type, params) from a node dict."""
+    """Return (type, params) from a node dict.
+
+    Strips metadata keys ('type', 'id') that are not constructor arguments.
+    The 'name' key is stripped for output nodes but kept for activation nodes
+    (backward compat with {"type": "activation", "name": "relu"} format).
+    """
     node_type = node.get("type", "").lower().strip()
-    params = {k: v for k, v in node.items() if k != "type"}
+    # For output nodes, 'name' is metadata (e.g. "predictions").
+    # For activation nodes, 'name' is a required param (e.g. "relu").
+    skip = _META_KEYS if node_type != "activation" else {"type", "id"}
+    params = {k: v for k, v in node.items() if k not in skip}
     return node_type, params
 
 
@@ -300,5 +320,232 @@ def serialize_model(model: nn.Module) -> bytes:
 def deserialize_model(pipeline: list[dict[str, Any]], state_bytes: bytes) -> nn.Module:
     model = build_model(pipeline)
     buf = io.BytesIO(state_bytes)
-    model.load_state_dict(torch.load(buf, weights_only=True))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Using weights_only=False because state_dict from different torch versions can be finicky
+    model.load_state_dict(torch.load(buf, weights_only=False, map_location=device))
     return model
+
+
+# ---------------------------------------------------------------------------
+# Graph JSON conversion (MNIST_Input.json format)
+# ---------------------------------------------------------------------------
+
+def resolve_connections(
+    layers: list[dict[str, Any]],
+    connections: list[dict[str, str]],
+) -> list[dict[str, Any]]:
+    """Order *layers* according to *connections*.
+    
+    If multiple heads exist (e.g. detached nodes), it prioritizes the chain 
+    that ends in an 'output' type node or the longest available chain.
+    """
+    if not connections:
+        return layers
+
+    id_to_layer = {layer["id"]: layer for layer in layers if "id" in layer}
+    
+    # Build adjacency
+    successors: dict[str, list[str]] = {}
+    predecessors: dict[str, list[str]] = {}
+    
+    for conn in connections:
+        f, t = conn["from"], conn["to"]
+        successors.setdefault(f, []).append(t)
+        predecessors.setdefault(t, []).append(f)
+
+    all_node_ids = set(id_to_layer.keys())
+    # A head is any node with no incoming connections
+    heads = [node_id for node_id in all_node_ids if node_id not in predecessors]
+    
+    if not heads:
+        # Fallback for circular or empty
+        return layers
+
+    # We want to find the "best" chain. 
+    # Let's find all possible paths starting from all heads.
+    paths: list[list[str]] = []
+    
+    for head in heads:
+        current_path = []
+        curr = head
+        visited = set()
+        while curr and curr not in visited:
+            visited.add(curr)
+            current_path.append(curr)
+            # ScratchMyAI currently supports linear chains, so we just take the first successor
+            next_nodes = successors.get(curr, [])
+            curr = next_nodes[0] if next_nodes else None
+        paths.append(current_path)
+
+    # Heuristic: The model chain is the one that ends in an 'output' node.
+    # If none do, take the longest chain.
+    best_path = paths[0]
+    for path in paths:
+        last_node = id_to_layer.get(path[-1], {})
+        if last_node.get("type", "").lower() == "output":
+            best_path = path
+            break
+    else:
+        best_path = max(paths, key=len)
+
+    return [id_to_layer[node_id] for node_id in best_path if node_id in id_to_layer]
+
+
+def convert_graph_json(graph: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert the graph JSON format into a flat pipeline list.
+
+    Input format (MNIST_Input.json)::
+
+        {
+          "dataset": "mnist",
+          "layers": [...],
+          "connections": [...],
+          "training_config": {...}
+        }
+
+    Returns a flat list compatible with ``build_model`` / ``run_pipeline``.
+    ``training_config`` is *not* included in the pipeline; retrieve it
+    separately via ``graph["training_config"]``.
+    """
+    layers = graph.get("layers", [])
+    connections = graph.get("connections", [])
+
+    ordered = resolve_connections(layers, connections) if connections else layers
+    return ordered
+
+
+# ---------------------------------------------------------------------------
+# Dataset loading
+# ---------------------------------------------------------------------------
+
+def load_dataset(
+    name: str,
+    batch_size: int = 64,
+    data_dir: str = "./data",
+) -> tuple[DataLoader, DataLoader]:
+    """Load a well-known dataset by name. Returns (train_loader, test_loader)."""
+    import torchvision
+    import torchvision.transforms as T
+
+    name_lower = name.lower().strip()
+
+    if name_lower == "mnist":
+        transform = T.Compose([T.ToTensor(), T.Normalize((0.1307,), (0.3081,))])
+        train_ds = torchvision.datasets.MNIST(data_dir, train=True, download=True, transform=transform)
+        test_ds = torchvision.datasets.MNIST(data_dir, train=False, download=True, transform=transform)
+    elif name_lower in ("fashionmnist", "fashion_mnist", "fashion-mnist"):
+        transform = T.Compose([T.ToTensor(), T.Normalize((0.2860,), (0.3530,))])
+        train_ds = torchvision.datasets.FashionMNIST(data_dir, train=True, download=True, transform=transform)
+        test_ds = torchvision.datasets.FashionMNIST(data_dir, train=False, download=True, transform=transform)
+    elif name_lower in ("cifar10", "cifar-10"):
+        transform = T.Compose([T.ToTensor(), T.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616))])
+        train_ds = torchvision.datasets.CIFAR10(data_dir, train=True, download=True, transform=transform)
+        test_ds = torchvision.datasets.CIFAR10(data_dir, train=False, download=True, transform=transform)
+    else:
+        raise ValueError(
+            f"Unknown dataset: {name!r}. "
+            f"Available: ['mnist', 'fashionmnist', 'cifar10']"
+        )
+
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    return train_loader, test_loader
+
+
+# ---------------------------------------------------------------------------
+# Training support
+# ---------------------------------------------------------------------------
+
+LOSS_REGISTRY: dict[str, type[nn.Module]] = {
+    "crossentropy":        nn.CrossEntropyLoss,
+    "crossentropyloss":    nn.CrossEntropyLoss,
+    "mse":                 nn.MSELoss,
+    "mseloss":             nn.MSELoss,
+    "l1":                  nn.L1Loss,
+    "l1loss":              nn.L1Loss,
+    "nll":                 nn.NLLLoss,
+    "nllloss":             nn.NLLLoss,
+    "bce":                 nn.BCELoss,
+    "bceloss":             nn.BCELoss,
+    "bcewithlogits":       nn.BCEWithLogitsLoss,
+    "bcewithlogitsloss":   nn.BCEWithLogitsLoss,
+    "huber":               nn.HuberLoss,
+    "huberloss":           nn.HuberLoss,
+    "smoothl1":            nn.SmoothL1Loss,
+    "smoothl1loss":        nn.SmoothL1Loss,
+}
+
+OPTIMIZER_REGISTRY: dict[str, type[torch.optim.Optimizer]] = {
+    "adam":     torch.optim.Adam,
+    "adamw":    torch.optim.AdamW,
+    "sgd":      torch.optim.SGD,
+    "rmsprop":  torch.optim.RMSprop,
+    "adagrad":  torch.optim.Adagrad,
+    "adadelta": torch.optim.Adadelta,
+}
+
+
+def train_model(
+    model: nn.Module,
+    train_loader: DataLoader,
+    training_config: dict[str, Any],
+    device: str = "cpu",
+) -> dict[str, Any]:
+    """Train *model* on *train_loader* according to *training_config*.
+
+    Returns a dict with ``{epoch_losses, final_loss}``.
+    """
+    loss_name = training_config.get("loss", "crossentropy").lower().replace(" ", "")
+    opt_name = training_config.get("optimizer", "adam").lower()
+    lr = float(training_config.get("learning_rate", 0.001))
+    epochs = int(training_config.get("epochs", 10))
+
+    if loss_name not in LOSS_REGISTRY:
+        raise ValueError(f"Unknown loss: {loss_name!r}. Available: {sorted(LOSS_REGISTRY)}")
+    if opt_name not in OPTIMIZER_REGISTRY:
+        raise ValueError(f"Unknown optimizer: {opt_name!r}. Available: {sorted(OPTIMIZER_REGISTRY)}")
+
+    criterion = LOSS_REGISTRY[loss_name]()
+    optimizer = OPTIMIZER_REGISTRY[opt_name](model.parameters(), lr=lr)
+
+    model.to(device)
+    model.train()
+
+    epoch_losses: list[float] = []
+
+    for epoch in range(1, epochs + 1):
+        running_loss = 0.0
+        batches = 0
+        for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+            batches += 1
+
+        avg_loss = running_loss / max(batches, 1)
+        epoch_losses.append(avg_loss)
+
+    return {"epoch_losses": epoch_losses, "final_loss": epoch_losses[-1] if epoch_losses else None}
+
+
+def run_graph_json(graph: dict[str, Any], device: str = "cpu") -> dict[str, Any]:
+    """High-level entry point: build, train, and evaluate from graph JSON.
+
+    Returns ``{model, train_result}``.
+    """
+    pipeline = convert_graph_json(graph)
+    model = build_model(pipeline)
+
+    dataset_name = graph.get("dataset")
+    training_config = graph.get("training_config", {})
+
+    if dataset_name:
+        train_loader, test_loader = load_dataset(dataset_name)
+        result = train_model(model, train_loader, training_config, device=device)
+        return {"model": model, "train_result": result}
+    else:
+        return {"model": model, "train_result": None}

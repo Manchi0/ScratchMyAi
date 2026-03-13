@@ -1,65 +1,108 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ModelCard } from './ModelCard';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { listGraphs, deleteGraph, type GraphSummary } from '@/lib/graphFunctions';
+import { listTrainedModels, predictModel, type TrainedModelSummary } from '@/lib/modelFunctions';
+import { Brain, Network } from 'lucide-react';
+import { GraphsTab } from './GraphsTab';
+import { InferenceTab } from './inference/InferenceTab';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
 
-  const [workflows, setWorkflows] = useState<GraphSummary[]>([]);
+  const [activeTab, setActiveTab] = useState<'graphs' | 'inference'>('graphs');
+  
+  const [graphs, setGraphs] = useState<GraphSummary[]>([]);
+  const [trainedModels, setTrainedModels] = useState<TrainedModelSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedModel, setSelectedModel] = useState<TrainedModelSummary | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    listGraphs(user.id)
-      .then(setWorkflows)
-      .catch((err) => console.error('Failed to load graphs:', err))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    
+    Promise.all([
+      listGraphs(user.id).then(setGraphs),
+      listTrainedModels(user.id).then(setTrainedModels)
+    ])
+    .catch((err) => console.error('Failed to load dashboard data:', err))
+    .finally(() => setLoading(false));
   }, [user]);
 
-  const handleDelete = async (id: string) => {
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (requestedTab === 'inference') {
+      setActiveTab('inference');
+    }
+
+    const requestedModelId = searchParams.get('model');
+    if (requestedModelId && trainedModels.length > 0) {
+      const matchedModel = trainedModels.find((m) => m.id === requestedModelId);
+      if (matchedModel) {
+        setActiveTab('inference');
+        setSelectedModel(matchedModel);
+      }
+    }
+  }, [searchParams, trainedModels]);
+
+  const handleDeleteGraph = async (id: string) => {
     try {
       await deleteGraph(id);
-      setWorkflows((prev) => prev.filter((w) => w.id !== id));
+      setGraphs((prev) => prev.filter((w) => w.id !== id));
     } catch (err) {
       console.error('Failed to delete graph:', err);
     }
   };
 
+  const handlePredict = async (batch: any[]) => {
+      if (!selectedModel) throw new Error("No model selected.");
+      return await predictModel(selectedModel.id, batch);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f7f4] p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-semibold text-neutral-800">Your Models</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-semibold text-neutral-800">AI Projects</h1>
           <button
             onClick={() => navigate('/graph')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
-            + New Model
+            + New Graph
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-4 mb-8 border-b border-stone-200">
+            <button 
+                onClick={() => setActiveTab('graphs')}
+                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'graphs' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
+            >
+                <Network size={18} />
+                My Graphs
+            </button>
+            <button 
+                onClick={() => setActiveTab('inference')}
+                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'inference' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
+            >
+                <Brain size={18} />
+                Inference Models
+            </button>
+        </div>
+
         {loading ? (
-          <p className="text-neutral-500">Loading…</p>
-        ) : workflows.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-neutral-400 text-lg">No models yet.</p>
-            <p className="text-neutral-400 text-sm mt-1">Click "+ New Model" to get started.</p>
-          </div>
+          <p className="text-neutral-500">Loading your AI projects…</p>
+        ) : activeTab === 'graphs' ? (
+          <GraphsTab graphs={graphs} onDeleteGraph={handleDeleteGraph} />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {workflows.map((w) => (
-              <ModelCard
-                key={w.id}
-                id={w.id}
-                title={w.title}
-                updatedAt={w.updated_at}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          <InferenceTab 
+            trainedModels={trainedModels} 
+            selectedModel={selectedModel} 
+            onSelectModel={setSelectedModel} 
+            onPredict={handlePredict} 
+          />
         )}
       </div>
     </div>

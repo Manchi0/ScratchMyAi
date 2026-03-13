@@ -72,7 +72,7 @@ function AppShellContent() {
     setNodes,
     setEdges,
     setTitle,
-    setWorkflowId,
+    setGraphId: setWorkflowId,
     setTrainingConfig,
   } = useStore();
 

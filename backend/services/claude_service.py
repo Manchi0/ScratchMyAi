@@ -1,5 +1,10 @@
+import os
+from pathlib import Path
+
 import anthropic
-from core.config import settings
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env.local")
 
 _client: anthropic.Anthropic | None = None
 
@@ -7,7 +12,7 @@ _client: anthropic.Anthropic | None = None
 def get_client() -> anthropic.Anthropic:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        _client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
     return _client
 
 
