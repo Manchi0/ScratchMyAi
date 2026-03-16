@@ -13,6 +13,8 @@
     "@ai-sdk/anthropic": "^3.0.47",
     "@ai-sdk/openai": "^3.0.33",
     "@ai-sdk/react": "^3.0.102",
+    "@heroicons/react": "^2.2.0",
+    "@heroui/react": "^2.8.10",
     "@supabase/supabase-js": "^2.99.0",
     "@xyflow/react": "^12.10.1",
     "ai": "^6.0.100",

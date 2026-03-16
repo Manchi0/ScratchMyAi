@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@plugin "../hero.ts";
 
 :root {
   --background: #f8f7f4;
@@ -167,17 +169,6 @@ body {
 :focus-visible {
   outline: none;
   box-shadow: none;
-}
-
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible,
-a:focus-visible,
-[role="button"]:focus-visible,
-[tabindex]:focus-visible {
-  background-color: rgba(28, 25, 23, 0.04);
-  border-color: var(--border-strong);
 }
 
 /* ---- Markdown rendering in chat ---- */
