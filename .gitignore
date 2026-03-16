@@ -22,7 +22,6 @@ env/
 *.ckpt
 *.safetensors
 runs/
-outputs/
 checkpoints/
 wandb/
 
