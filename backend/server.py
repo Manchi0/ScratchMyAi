@@ -2,9 +2,12 @@ print("SCRATCH_MY_AI_SERVER_STARTING", flush=True)
 import os
 from pathlib import Path
 
+import json
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from api.routes import models
 
@@ -16,6 +19,18 @@ def _get_allowed_origins() -> list[str]:
     return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 app = FastAPI(title="ScratchMyAI API", version="0.1.0")
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    try:
+        body = await request.body()
+        body_text = body.decode("utf-8", errors="replace")
+    except Exception:
+        body_text = "<unreadable>"
+    print(f"VALIDATION ERROR on {request.method} {request.url.path}", flush=True)
+    print(f"  errors: {json.dumps(exc.errors(), indent=2)}", flush=True)
+    print(f"  body:   {body_text}", flush=True)
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 @app.middleware("http")
 async def log_requests(request, call_next):
@@ -33,6 +48,9 @@ app.add_middleware(
 )
 
 app.include_router(models.router)
+
+print("DEBUG: Registered routes:", [r.path for r in app.routes], flush=True)
+
 
 
 @app.get("/health")

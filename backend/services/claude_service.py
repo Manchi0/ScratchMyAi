@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 import anthropic
 from dotenv import load_dotenv
@@ -30,6 +31,41 @@ def run_prompt(
         messages=[{"role": "user", "content": prompt}],
     )
     return message.content[0].text
+
+
+def run_messages(
+    messages: list[dict[str, Any]],
+    system: str = "You are a helpful AI assistant inside a visual programming environment.",
+    model: str = "claude-opus-4-6",
+    max_tokens: int = 2048,
+) -> str:
+    """Run a multi-turn conversation and return Claude's text response."""
+    client = get_client()
+    cleaned_messages = [
+        {
+            "role": m.get("role"),
+            "content": str(m.get("content", "")).strip(),
+        }
+        for m in messages
+        if m.get("role") in {"user", "assistant"} and str(m.get("content", "")).strip()
+    ]
+
+    if not cleaned_messages:
+        raise ValueError("At least one valid message is required")
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system,
+        messages=cleaned_messages,
+    )
+
+    chunks = []
+    for block in response.content:
+        text = getattr(block, "text", "")
+        if text:
+            chunks.append(text)
+    return "".join(chunks).strip()
 
 
 async def stream_prompt(prompt: str, system: str = "", model: str = "claude-opus-4-6"):

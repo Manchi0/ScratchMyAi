@@ -16,6 +16,7 @@ import { Hand, MousePointer2 } from "lucide-react";
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
+import { AIAgentSidebar } from "./AIAgentSidebar";
 import { useStore } from "@/store/useStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
@@ -202,6 +203,8 @@ function AppShellContent() {
               {/* <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" /> */}
             </ReactFlow>
           </div>
+
+          <AIAgentSidebar />
         </div>
 
         <StatusBar />

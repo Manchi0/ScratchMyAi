@@ -1,11 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
+print("DEBUG: models.py is being loaded", flush=True)
+
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import Any, List
+from pydantic import BaseModel, Field
+from typing import Any, List, Literal
 import uuid
 
 from db.supabase import get_supabase
 from services.inference_service import inference_service
+from services.claude_service import run_messages as run_claude_messages
+from services.openai_service import run_messages as run_openai_messages
 from api.routes.helperFunctions import (
     TrainRequest,
     get_current_user_id,
@@ -33,6 +37,100 @@ class SaveModelRequest(BaseModel):
 
 class PredictRequest(BaseModel):
     input_data: List[Any]
+
+
+class AssistantMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AssistantChatRequest(BaseModel):
+    provider: Literal["claude", "openai"] = "openai"
+    message: str
+    history: list[AssistantMessage] = Field(default_factory=list)
+    graph: dict[str, Any] = Field(default_factory=dict)
+    model: str | None = None
+    system: str | None = None
+
+
+class AssistantChatResponse(BaseModel):
+    provider: Literal["claude", "openai"]
+    model: str
+    reply: str
+
+
+def _build_graph_summary(graph: dict[str, Any]) -> str:
+    if not graph:
+        return "No graph context was provided."
+
+    title = graph.get("title") or "Untitled"
+    dataset = graph.get("dataset") or "unspecified"
+    nodes = graph.get("nodes") or []
+    edges = graph.get("edges") or []
+    training_config = graph.get("training_config") or {}
+
+    block_types: dict[str, int] = {}
+    for node in nodes:
+        block_type = (
+            (node.get("data") or {}).get("blockType")
+            or (node.get("type") or "unknown")
+        )
+        block_types[block_type] = block_types.get(block_type, 0) + 1
+
+    block_type_summary = ", ".join(
+        f"{name} x{count}" for name, count in sorted(block_types.items(), key=lambda x: x[0])
+    )
+    if not block_type_summary:
+        block_type_summary = "none"
+
+    return (
+        f"Graph title: {title}\n"
+        f"Dataset: {dataset}\n"
+        f"Node count: {len(nodes)}\n"
+        f"Edge count: {len(edges)}\n"
+        f"Block types: {block_type_summary}\n"
+        f"Training config: {training_config}"
+    )
+
+
+@router.post("/assistant/chat", response_model=AssistantChatResponse)
+async def assistant_chat(request: AssistantChatRequest, user_id: str = Depends(get_current_user_id)):
+    """Chat with an AI assistant using current graph status as context."""
+    prompt = (request.message or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    graph_summary = _build_graph_summary(request.graph or {})
+    system_prompt = (
+        request.system
+        or "You are an expert assistant for a visual neural-network graph builder. "
+        "Give practical, concise guidance based on the graph context. "
+        "If the graph looks incomplete, suggest concrete next blocks or parameter fixes."
+    )
+    system_prompt = f"{system_prompt}\n\nCurrent graph context:\n{graph_summary}"
+
+    history_messages = [
+        {"role": m.role, "content": m.content}
+        for m in request.history
+        if (m.content or "").strip()
+    ]
+    messages = [*history_messages, {"role": "user", "content": prompt}]
+
+    try:
+        if request.provider == "openai":
+            model = request.model or "gpt-4.1-mini"
+            reply = run_openai_messages(messages=messages, system=system_prompt, model=model)
+            return AssistantChatResponse(provider="openai", model=model, reply=reply)
+
+        model = request.model or "claude-opus-4-6"
+        reply = run_claude_messages(messages=messages, system=system_prompt, model=model)
+        return AssistantChatResponse(provider="claude", model=model, reply=reply)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Assistant request failed: {str(e)}") from e
+
+print("DEBUG: assistant_chat route defined", flush=True)
 
 @router.post("/save")
 async def save_model(request: SaveModelRequest, user_id: str = Depends(get_current_user_id)):
@@ -114,3 +212,7 @@ async def predict(model_id: str, request: PredictRequest, user_id: str = Depends
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/debug_test")
+async def debug_test():
+    return {"message": "Debug test works"}
