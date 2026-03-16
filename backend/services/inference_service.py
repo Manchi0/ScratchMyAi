@@ -1,6 +1,9 @@
 from typing import Any
 import io
 import json
+from pathlib import Path
+
+import modal
 import torch
 
 from db.supabase import get_supabase
@@ -11,17 +14,116 @@ class InferenceService:
     def __init__(self):
         self.supabase = get_supabase()
         self.bucket = "ai-models"
+        backend_root = Path(__file__).resolve().parents[1]
+        self.modal_image = (
+            modal.Image.debian_slim()
+            .pip_install("torch", "torchvision", "numpy<2.4")
+            .add_local_dir(str(backend_root / "services"), remote_path="/workspace/services")
+        )
+
+    def _get_model_record(self, model_id: str, user_id: str) -> dict[str, Any]:
+        response = self.supabase.table("trained_models").select("*").eq("id", model_id).eq("user_id", user_id).execute()
+        if not response.data:
+            raise ValueError(f"Model {model_id} not found or access denied.")
+        return response.data[0]
+
+    def _create_weights_download_url(self, weights_path: str, expires_in_seconds: int = 1800) -> str:
+        signed = self.supabase.storage.from_(self.bucket).create_signed_url(weights_path, expires_in_seconds)
+        signed_url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
+        if not signed_url:
+            raise ValueError("Supabase did not return a signed download URL for model weights")
+        return signed_url
+
+    def _run_inference_in_modal(
+        self,
+        graph_json: dict[str, Any],
+        weights_signed_url: str,
+        input_data: list[Any],
+        dtype_name: str,
+    ) -> list[Any]:
+        graph_json_literal = json.dumps(json.dumps(graph_json))
+        input_data_literal = json.dumps(json.dumps(input_data))
+        weights_url_literal = json.dumps(weights_signed_url)
+        dtype_literal = json.dumps(dtype_name)
+
+        code = f"""import io
+import json
+import urllib.request
+import torch
+import sys
+
+sys.path.insert(0, "/workspace")
+from services.local_runner import convert_graph_json, deserialize_model
+
+graph_json = json.loads({graph_json_literal})
+input_data = json.loads({input_data_literal})
+weights_url = {weights_url_literal}
+dtype_name = {dtype_literal}
+
+with urllib.request.urlopen(weights_url, timeout=120) as resp:
+    weights_bytes = resp.read()
+
+pipeline = convert_graph_json(graph_json)
+model = deserialize_model(pipeline, weights_bytes)
+model.eval()
+
+first_layer = next(
+    (n.get("type", "").lower() for n in pipeline if n.get("type", "").lower() not in {{"dataset", "output"}}),
+    None,
+)
+dtype = torch.long if dtype_name == "long" or first_layer in ("embedding", "embeddingbag") else torch.float32
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+x = torch.tensor(input_data, dtype=dtype).to(device)
+with torch.no_grad():
+    output = model(x)
+
+print("INFERENCE_JSON:" + json.dumps(output.tolist()), flush=True)
+"""
+
+        app = modal.App("scratch-my-ai-inference")
+        output_json = None
+        stderr_lines: list[str] = []
+
+        with app.run():
+            sandbox = modal.Sandbox.create(
+                "python", "-u", "-c", code,
+                image=self.modal_image,
+                gpu="any",
+                timeout=300,
+                app=app,
+            )
+
+            for message in sandbox.stdout:
+                stripped = (message or "").strip()
+                if not stripped:
+                    continue
+                if stripped.startswith("INFERENCE_JSON:"):
+                    output_json = stripped.replace("INFERENCE_JSON:", "", 1)
+
+            for message in sandbox.stderr:
+                stripped_err = (message or "").strip()
+                if stripped_err:
+                    stderr_lines.append(stripped_err)
+
+            sandbox.wait()
+            if sandbox.returncode != 0:
+                raise ValueError(
+                    f"Modal inference failed with exit code {sandbox.returncode}. "
+                    f"Stderr: {' | '.join(stderr_lines[-5:]) if stderr_lines else 'none'}"
+                )
+
+        if not output_json:
+            raise ValueError("Modal inference finished without returning prediction output")
+
+        return json.loads(output_json)
 
     def load_model(self, model_id: str, user_id: str) -> dict[str, Any]:
         """Loads a model's metadata and weights from Supabase."""
         
         # 1. Fetch metadata & graph JSON from DB
-        response = self.supabase.table("trained_models").select("*").eq("id", model_id).eq("user_id", user_id).execute()
-        
-        if not response.data:
-            raise ValueError(f"Model {model_id} not found or access denied.")
-            
-        model_record = response.data[0]
+        model_record = self._get_model_record(model_id, user_id)
         graph_json = model_record["graph_json"]
         weights_path = model_record["weights_path"]
 
@@ -74,31 +176,24 @@ class InferenceService:
                 raise ValueError("Expected input shape [batch, 3, 32, 32] for CIFAR-10")
 
     def predict(self, model_id: str, user_id: str, input_data: list[Any]) -> list[Any]:
-        """Loads model and runs a single inference pass."""
-        
-        loaded = self.load_model(model_id, user_id)
-        model = loaded["model"]
-        pipeline = loaded["pipeline"]
-        
-        # Determine input dtype (e.g. float vs long for embeddings)
+        """Runs inference remotely in Modal using the stored graph and weights."""
+        model_record = self._get_model_record(model_id, user_id)
+        graph_json = model_record["graph_json"]
+        weights_path = model_record["weights_path"]
+
+        pipeline = convert_graph_json(graph_json)
         first_layer = next(
             (n.get("type", "").lower() for n in pipeline if n.get("type", "").lower() not in {"dataset", "output"}),
             None,
         )
         dtype = torch.long if first_layer in ("embedding", "embeddingbag") else torch.float32
 
-        # Run inference
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-        
-        x = torch.tensor(input_data, dtype=dtype).to(device)
-        dataset_name = str(loaded["metadata"].get("dataset") or "")
+        x = torch.tensor(input_data, dtype=dtype)
+        dataset_name = str(model_record.get("dataset") or "")
         self._validate_input_tensor(x, dataset_name)
-        print(f"Running inference with input shape: {x.shape}", flush=True)
-        
-        with torch.no_grad():
-            output = model(x)
-            
-        return output.tolist()
+
+        signed_url = self._create_weights_download_url(weights_path)
+        dtype_name = "long" if dtype == torch.long else "float32"
+        return self._run_inference_in_modal(graph_json, signed_url, input_data, dtype_name)
 
 inference_service = InferenceService()

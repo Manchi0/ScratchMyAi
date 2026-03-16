@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from services.local_runner import (
@@ -312,6 +313,7 @@ def graph_json_to_code(
     graph: dict[str, Any],
     include_base64_export: bool = False,
     include_file_export: bool = False,
+    signed_upload_url: str | None = None,
 ) -> str:
     """Convert the graph JSON format into a standalone, runnable Python/PyTorch
     training script. Handles dataset loading, model building, training loop,
@@ -345,6 +347,37 @@ def graph_json_to_code(
         time.sleep(0.015)
     sys.stdout.flush()
     print("====MODEL_WEIGHTS_END====", flush=True)"""
+    elif signed_upload_url:
+        upload_url_literal = json.dumps(signed_upload_url)
+        base64_export_code = f"""    model, metrics = train()
+    print(f"METRIC_JSON:{{json.dumps(metrics)}}", flush=True)
+    import io
+    import urllib.request
+    import urllib.error
+    buf = io.BytesIO()
+    torch.save(model.state_dict(), buf)
+    artifact_bytes = buf.getvalue()
+    upload_url = {upload_url_literal}
+    req = urllib.request.Request(
+        upload_url,
+        data=artifact_bytes,
+        method="PUT",
+        headers={{
+            "Content-Type": "application/octet-stream",
+            "x-upsert": "false",
+        }},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            status_code = getattr(resp, "status", resp.getcode())
+        if 200 <= int(status_code) < 300:
+            print(f"ARTIFACT_UPLOADED:{{len(artifact_bytes)}}", flush=True)
+        else:
+            print(f"ARTIFACT_UPLOAD_FAILED:status={{status_code}}", flush=True)
+    except urllib.error.HTTPError as e:
+        print(f"ARTIFACT_UPLOAD_FAILED:status={{e.code}}", flush=True)
+    except Exception as e:
+        print(f"ARTIFACT_UPLOAD_ERROR:{{str(e)}}", flush=True)"""
 
     layers = graph.get("layers", [])
     connections = graph.get("connections", [])

@@ -1,7 +1,6 @@
 from typing import Any
 import uuid
 import json
-import base64
 import re
 import time
 
@@ -39,21 +38,37 @@ class TrainRequest(BaseModel):
     graph_json: dict[str, Any]
 
 
+def _create_artifact_upload_contract(user_id: str) -> tuple[str, str]:
+    file_path = f"{user_id}/{uuid.uuid4().hex[:8]}.pt"
+    supabase = get_supabase()
+    signed = supabase.storage.from_("ai-models").create_signed_upload_url(file_path)
+    signed_url = signed.get("signed_url") or signed.get("signedUrl")
+
+    if not signed_url:
+        raise ValueError("Supabase did not return a signed upload URL")
+
+    return file_path, signed_url
+
+
 def training_stream_generator(request: TrainRequest, user_id: str):
     graph_payload = dict(request.graph_json or {})
     if not graph_payload.get("dataset") and request.dataset:
         graph_payload["dataset"] = request.dataset
 
     selected_dataset = graph_payload.get("dataset") or request.dataset
-    code = graph_json_to_code(graph_payload, include_base64_export=True)
-    print("--- GENERATED TRAINING CODE ---", flush=True)
-    print(code, flush=True)
-    print("-------------------------------", flush=True)
+    try:
+        file_path, signed_upload_url = _create_artifact_upload_contract(user_id)
+    except Exception as e:
+        yield f"data: {json.dumps({'type': 'error', 'message': f'Could not prepare model artifact upload URL: {str(e)}'})}\n\n"
+        return
+
+    code = graph_json_to_code(graph_payload, signed_upload_url=signed_upload_url)
 
     yield f"data: {json.dumps({'type': 'log', 'message': f'Selected dataset: {selected_dataset}'})}\n\n"
     yield f"data: {json.dumps({'type': 'log', 'message': 'Booting up Modal GPU Container...'})}\n\n"
 
-    weights_b64 = None
+    artifact_uploaded = False
+    artifact_upload_error = None
     exit_code = -1
     training_started_at = time.perf_counter()
     final_accuracy = None
@@ -129,39 +144,36 @@ def training_stream_generator(request: TrainRequest, user_id: str):
             )
             yield f"data: {json.dumps({'type': 'log', 'message': 'Sandbox started. Streaming logs...'})}\n\n"
 
-            collecting_weights = False
-            weights_buffer = []
-
             for message in sandbox.stdout:
-                if "====MODEL_WEIGHTS_BEGIN====" in message:
-                    collecting_weights = True
-                    continue
-                elif "====MODEL_WEIGHTS_END====" in message:
-                    collecting_weights = False
-                    weights_b64 = "".join(weights_buffer)
+                stripped = normalize_line(message)
+                if not stripped:
                     continue
 
-                if collecting_weights:
-                    weights_buffer.append(message.strip())
-                else:
-                    stripped = normalize_line(message)
-                    if not stripped:
-                        continue
+                if is_progress_noise(stripped):
+                    continue
 
-                    if is_progress_noise(stripped):
-                        continue
+                if stripped.startswith("METRIC_JSON:"):
+                    try:
+                        metrics = json.loads(stripped.replace("METRIC_JSON:", "", 1).strip())
+                        if metrics.get("accuracy") is not None:
+                            final_accuracy = float(metrics["accuracy"])
+                        if metrics.get("loss") is not None:
+                            final_loss = float(metrics["loss"])
+                        if metrics.get("epochs") is not None:
+                            final_epochs = int(metrics["epochs"])
+                    except Exception:
+                        pass
+                    continue
 
-                    if stripped.startswith("METRIC_JSON:"):
-                        try:
-                            metrics = json.loads(stripped.replace("METRIC_JSON:", "", 1).strip())
-                            if metrics.get("accuracy") is not None:
-                                final_accuracy = float(metrics["accuracy"])
-                            if metrics.get("loss") is not None:
-                                final_loss = float(metrics["loss"])
-                            if metrics.get("epochs") is not None:
-                                final_epochs = int(metrics["epochs"])
-                        except Exception:
-                            pass
+                if stripped.startswith("ARTIFACT_UPLOADED:"):
+                    artifact_uploaded = True
+                    yield f"data: {json.dumps({'type': 'log', 'message': 'Model artifact uploaded to storage.'})}\n\n"
+                    continue
+
+                if stripped.startswith("ARTIFACT_UPLOAD_FAILED:") or stripped.startswith("ARTIFACT_UPLOAD_ERROR:"):
+                    artifact_upload_error = stripped
+                    yield f"data: {json.dumps({'type': 'error', 'message': stripped})}\n\n"
+                    continue
 
                 loss_match = loss_pattern.search(stripped)
                 if loss_match:
@@ -193,27 +205,13 @@ def training_stream_generator(request: TrainRequest, user_id: str):
         yield f"data: {json.dumps({'type': 'error', 'message': f'Sandbox execution failed: {str(e)}'})}\n\n"
         return
 
-    if exit_code == 0 and weights_b64:
+    if exit_code == 0 and artifact_uploaded:
         yield f"data: {json.dumps({'type': 'log', 'message': 'Training complete! Saving model to registry...'})}\n\n"
         try:
-            weights_bytes = base64.b64decode(weights_b64)
-
-            if not weights_bytes or len(weights_bytes) < 1024:
-                raise ValueError(
-                    f"Model artifact was empty or unexpectedly small ({len(weights_bytes) if weights_bytes else 0} bytes)"
-                )
-
-            file_path = f"{user_id}/{uuid.uuid4().hex[:8]}.pt"
             supabase = get_supabase()
             training_time_seconds = round(time.perf_counter() - training_started_at, 3)
             configured_epochs = graph_payload.get("training_config", {}).get("epochs")
             persisted_epochs = final_epochs if final_epochs is not None else configured_epochs
-
-            supabase.storage.from_("ai-models").upload(
-                file_path,
-                weights_bytes,
-                file_options={"content-type": "application/octet-stream"}
-            )
 
             record = {
                 "user_id": user_id,
@@ -234,8 +232,11 @@ def training_stream_generator(request: TrainRequest, user_id: str):
             yield f"data: {json.dumps({'type': 'error', 'message': f'Failed to save to Supabase: {str(e)}'})}\n\n"
     else:
         error_message = f"Training failed with exit code {exit_code}"
-        if exit_code == 0 and not weights_b64:
-            error_message = "Training finished but model artifact was missing or truncated in logs"
+        if exit_code == 0 and not artifact_uploaded:
+            if artifact_upload_error:
+                error_message = f"Training finished but artifact upload failed: {artifact_upload_error}"
+            else:
+                error_message = "Training finished but artifact upload confirmation was missing"
         if saw_keyboard_interrupt:
             error_message += " (likely sandbox timeout/interruption; try fewer epochs or higher timeout)"
         yield f"data: {json.dumps({'type': 'error', 'message': error_message})}\n\n"
