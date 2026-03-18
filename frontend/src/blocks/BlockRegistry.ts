@@ -1,4 +1,5 @@
 import { BlockDefinition } from '@/blocks/BlockDefinition';
+import { Conv2dBlock } from '@/blocks/layers/Conv2dBlock';
 import { LinearBlock } from '@/blocks/layers/LinearBlock';
 import { FlattenBlock } from '@/blocks/layers/FlattenBlock';
 import { BatchNorm1dBlock } from '@/blocks/layers/BatchNorm1dBlock';
@@ -17,6 +18,7 @@ import { OutputBlock } from '@/blocks/outputs/OutputBlock';
 
 export const BlockRegistry: Record<string, BlockDefinition> = {
   dataset: new DatasetBlock(),
+  conv2d: new Conv2dBlock(),
   linear: new LinearBlock(),
   flatten: new FlattenBlock(),
   batchnorm1d: new BatchNorm1dBlock(),

@@ -3,16 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { listGraphs, deleteGraph, type GraphSummary } from '@/lib/graphFunctions';
 import { listTrainedModels, predictModel, deleteTrainedModel, type TrainedModelSummary } from '@/lib/modelFunctions';
-import { Brain, Network } from 'lucide-react';
+import { Brain, Network, GraduationCap } from 'lucide-react';
 import { GraphsTab } from './GraphsTab';
 import { InferenceTab } from './inference/InferenceTab';
+import { LearnTab } from './LearnTab';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
 
-  const [activeTab, setActiveTab] = useState<'graphs' | 'inference'>('graphs');
+  const [activeTab, setActiveTab] = useState<'graphs' | 'inference' | 'learn'>('graphs');
   
   const [graphs, setGraphs] = useState<GraphSummary[]>([]);
   const [trainedModels, setTrainedModels] = useState<TrainedModelSummary[]>([]);
@@ -33,9 +34,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
-    if (requestedTab === 'inference') {
-      setActiveTab('inference');
-    }
+    if (requestedTab === 'inference') setActiveTab('inference');
+    if (requestedTab === 'learn') setActiveTab('learn');
 
     const requestedModelId = searchParams.get('model');
     if (requestedModelId && trainedModels.length > 0) {
@@ -95,26 +95,35 @@ export default function DashboardPage() {
                 <Network size={18} />
                 My Graphs
             </button>
-            <button 
+            <button
                 onClick={() => setActiveTab('inference')}
                 className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'inference' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
             >
                 <Brain size={18} />
                 Inference Models
             </button>
+            <button
+                onClick={() => setActiveTab('learn')}
+                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'learn' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
+            >
+                <GraduationCap size={18} />
+                Learning ML
+            </button>
         </div>
 
-        {loading ? (
+        {activeTab === 'learn' ? (
+          <LearnTab />
+        ) : loading ? (
           <p className="text-neutral-500">Loading your AI projects…</p>
         ) : activeTab === 'graphs' ? (
           <GraphsTab graphs={graphs} onDeleteGraph={handleDeleteGraph} />
         ) : (
-          <InferenceTab 
-            trainedModels={trainedModels} 
-            selectedModel={selectedModel} 
-            onSelectModel={setSelectedModel} 
+          <InferenceTab
+            trainedModels={trainedModels}
+            selectedModel={selectedModel}
+            onSelectModel={setSelectedModel}
             onDeleteModel={handleDeleteModel}
-            onPredict={handlePredict} 
+            onPredict={handlePredict}
           />
         )}
       </div>

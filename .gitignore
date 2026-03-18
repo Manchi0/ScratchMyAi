@@ -37,6 +37,9 @@ out/
 supabase/.branches/
 supabase/.temp/
 
+# Claude Code
+.claude/
+
 # IDE
 .vscode/
 .idea/

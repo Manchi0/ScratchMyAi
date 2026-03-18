@@ -17,11 +17,21 @@ import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
 import { AIAgentSidebar } from "./AIAgentSidebar";
+import { LessonSidebar } from "@/pages/learn/LessonSidebar";
+import { mlpIntro } from "@/pages/learn/courses/mlpIntro";
+import { cnnMnist } from "@/pages/learn/courses/cnnMnist";
 import { useStore } from "@/store/useStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 import { loadGraph } from "@/lib/graphFunctions";
+
+import type { Course } from "@/pages/learn/courses/mlpIntro";
+
+const LESSON_COURSES: Record<string, Course> = {
+  'mlp-intro': mlpIntro,
+  'simple-cnn-mnist': cnnMnist,
+};
 
 const nodeTypes = {
   neuralBlock: NodeRender,
@@ -31,8 +41,9 @@ const edgeTypes = {
   wire: WireEdge,
 };
 
-function AppShellContent() {
+function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
   const { id } = useParams<{ id?: string }>();
+  const lessonCourse = lessonCourseId ? LESSON_COURSES[lessonCourseId] : undefined;
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   const { screenToFlowPosition, fitView } = useReactFlow();
@@ -204,7 +215,7 @@ function AppShellContent() {
             </ReactFlow>
           </div>
 
-          <AIAgentSidebar />
+          {lessonCourse ? <LessonSidebar course={lessonCourse} /> : <AIAgentSidebar />}
         </div>
 
         <StatusBar />
@@ -217,6 +228,15 @@ export function AppShell() {
   return (
     <ReactFlowProvider>
       <AppShellContent />
+    </ReactFlowProvider>
+  );
+}
+
+export function LessonShell() {
+  const { courseId } = useParams<{ courseId: string }>();
+  return (
+    <ReactFlowProvider>
+      <AppShellContent lessonCourseId={courseId} />
     </ReactFlowProvider>
   );
 }
