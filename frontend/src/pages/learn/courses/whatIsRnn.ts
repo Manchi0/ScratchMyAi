@@ -38,7 +38,7 @@ export const whatIsRnn: Course = {
       id: 'welcome',
       title: 'Welcome',
       type: 'intro',
-      content: `# What Is a Recurrent Neural Network? 🔄
+      content: `# What Is a Recurrent Neural Network?
 
 An MLP sees one input, produces one output, then forgets everything. It has no memory.
 
@@ -71,7 +71,7 @@ We'll use MNIST treated as **28 timesteps** — each row of the image is one ste
 | Block | Category | Role |
 |-------|----------|------|
 | **Dataset** | Input | Loads MNIST (28 rows × 28 pixels) |
-| **RNN** | Layer | ✨ New — processes the sequence with a hidden state |
+| **RNN** | Layer | New — processes the sequence with a hidden state |
 | **Linear** | Layer | Maps final hidden state → 10 class scores |
 | **Softmax** | Activation | Converts scores to probabilities |
 | **Output** | Output | End of pipeline |
@@ -260,7 +260,7 @@ Click **Check My Graph**!`,
           if (!canReach(nodes, edges, s, t))
             return { passed: false, message: `Missing connection: ${s} → ${t}.`, hint: hintLevel >= 1 ? `Draw a wire from the ${s} block to the ${t} block.` : `Connect ${s} → ${t}.` };
         }
-        return { passed: true, message: '🎉 RNN pipeline complete! Save and Train to see it run.', hint: null };
+        return { passed: true, message: 'RNN pipeline complete! Save and Train to see it run.', hint: null };
       },
     },
   ],

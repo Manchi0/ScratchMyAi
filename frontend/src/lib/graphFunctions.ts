@@ -9,6 +9,7 @@ export interface GraphRow {
   nodes: Node[];
   edges: Edge[];
   training_config?: TrainingConfig;
+  course_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -17,6 +18,9 @@ export interface GraphSummary {
   id: string;
   title: string;
   updated_at: string;
+  course_id?: string | null;
+  nodes?: Node[];
+  edges?: Edge[];
 }
 
 /** Insert a new graph or update an existing one. Returns the row id. */
@@ -28,6 +32,7 @@ export async function saveGraph(
     nodes: Node[];
     edges: Edge[];
     trainingConfig?: TrainingConfig;
+    courseId?: string | null;
   }
 ): Promise<string> {
   if (data.id) {
@@ -38,7 +43,8 @@ export async function saveGraph(
         title: data.title, 
         nodes: data.nodes, 
         edges: data.edges,
-        training_config: data.trainingConfig 
+        training_config: data.trainingConfig,
+        course_id: data.courseId
       })
       .eq('id', data.id);
 
@@ -54,6 +60,7 @@ export async function saveGraph(
         nodes: data.nodes as unknown as Record<string, unknown>[],
         edges: data.edges as unknown as Record<string, unknown>[],
         training_config: data.trainingConfig as unknown as Record<string, unknown>,
+        course_id: data.courseId
       })
       .select('id')
       .single();
@@ -79,7 +86,7 @@ export async function loadGraph(id: string): Promise<GraphRow> {
 export async function listGraphs(userId: string): Promise<GraphSummary[]> {
   const { data, error } = await supabase
     .from('graphs')
-    .select('id, title, updated_at')
+    .select('id, title, updated_at, course_id, nodes, edges')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
 

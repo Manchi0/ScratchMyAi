@@ -83,7 +83,7 @@ export default function DashboardPage() {
         
         <main className="flex-1 overflow-auto p-8">
           <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-start mb-8 border-b border-[#e8e7e2] pb-6">
+            <div className="flex justify-between items-start mb-4 border-b border-[#e8e7e2] pb-6">
               <div className="flex flex-col gap-1.5">
                 <h1 className="text-3xl font-semibold text-[#111] tracking-tight">
                   {activeTab === 'graphs' && 'My Graphs'}

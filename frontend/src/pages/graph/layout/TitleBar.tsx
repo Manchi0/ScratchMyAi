@@ -19,7 +19,8 @@ export function TitleBar() {
     nodes,
     edges,
     trainingConfig,
-    setTrainingConfig
+    setTrainingConfig,
+    courseId
   } = useStore();
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export function TitleBar() {
         nodes,
         edges,
         trainingConfig,
+        courseId,
       });
       setWorkflowId(id);
       setSaved(true);
@@ -93,7 +95,7 @@ export function TitleBar() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             variant="primary"
-            className="font-semibold w-64 text-[14px] text-center shadow-none text-stone-700"
+            className="font-semibold w-[450px] text-[14px] text-center shadow-none text-stone-700"
             placeholder="Untitled"
             spellCheck={false}
           />

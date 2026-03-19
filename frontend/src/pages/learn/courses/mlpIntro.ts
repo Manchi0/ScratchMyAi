@@ -80,7 +80,7 @@ export const mlpIntro: Course = {
       id: 'welcome',
       title: 'Welcome',
       type: 'intro',
-      content: `# Your First Neural Network 🧠
+      content: `# Your First Neural Network
 
 In this lesson you'll build a **Multi-Layer Perceptron (MLP)** — the simplest kind of neural network — using visual blocks.
 
@@ -341,7 +341,7 @@ Once this is connected, your full pipeline is:
 
 \`Dataset → Flatten → Linear(784,128) → ReLU → Linear(128,10) → Softmax → Output\`
 
-Run the final check to confirm everything is connected correctly — then hit **Save** and **Train**! 🎉`,
+Run the final check to confirm everything is connected correctly — then hit **Save** and **Train**!`,
     },
 
     {
@@ -392,7 +392,7 @@ Click **Check My Graph** to validate the full pipeline!`,
 
         return {
           passed: true,
-          message: '🎉 Perfect! Your MLP is complete. Hit Save and then Train to watch it learn!',
+          message: 'Perfect! Your MLP is complete. Hit Save and then Train to watch it learn!',
           hint: null,
         };
       },

@@ -8,7 +8,9 @@ import {
 import { Button, Label, ListBox, Select, Spinner, Tabs, TextArea } from '@heroui/react';
 
 import { askAssistant, type AssistantProvider, type AssistantMessagePayload } from '@/lib/assistantFunctions';
+import { updateCourseProgress } from '@/lib/courseFunctions';
 import { useStore } from '@/store/useStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import type { Course, LessonStep, CheckResult } from '@/pages/learn/courses/mlpIntro';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -205,18 +207,31 @@ function AIAgentPanel() {
 function LessonPanel({ course }: { course: Course }) {
   const nodes = useStore(s => s.nodes);
   const edges = useStore(s => s.edges);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
-  const [hintLevel, setHintLevel] = useState(0);
+  const { 
+    stepIndex, setStepIndex,
+    checkResult, setCheckResult,
+    hintLevel, setHintLevel 
+  } = useStore();
 
   const step: LessonStep = course.steps[stepIndex];
   const total = course.steps.length;
   const isFirst = stepIndex === 0;
   const isLast  = stepIndex === total - 1;
   const pct = Math.round((stepIndex / Math.max(total - 1, 1)) * 100);
+  const user = useAuthStore(s => s.user);
 
-  const goNext = () => { if (!isLast)  { setStepIndex(s => s + 1); setCheckResult(null); setHintLevel(0); } };
-  const goPrev = () => { if (!isFirst) { setStepIndex(s => s - 1); setCheckResult(null); setHintLevel(0); } };
+  useEffect(() => {
+    if (user && course.id) {
+      let status: 'in_progress' | 'completed' = 'in_progress';
+      if (isLast && (!step.check || checkResult?.passed)) {
+        status = 'completed';
+      }
+      updateCourseProgress(user.id, course.id, pct, status).catch(console.error);
+    }
+  }, [stepIndex, pct, isLast, checkResult, user, course.id, step.check]);
+
+  const goNext = () => { if (!isLast)  { setStepIndex(stepIndex + 1); setCheckResult(null); setHintLevel(0); } };
+  const goPrev = () => { if (!isFirst) { setStepIndex(stepIndex - 1); setCheckResult(null); setHintLevel(0); } };
   const runCheck = () => {
     if (!step.check) return;
     const result = step.check(nodes, edges, hintLevel);
@@ -225,51 +240,51 @@ function LessonPanel({ course }: { course: Course }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fffdf8]">
+    <div className="flex flex-col h-full bg-[#fafafa]">
       {/* Progress */}
-      <div className="px-3 pt-2 pb-1 border-b border-[#e8e7e2] bg-[#f4f1e7]">
-        <div className="flex justify-between text-[10px] text-[#9ca3af] mb-1">
+      <div className="px-3 pt-3 pb-3 border-b border-[#e8e8e8] bg-[#f5f5f5]">
+        <div className="flex justify-between text-[10px] text-[#888] font-medium mb-1.5">
           <span>Step {stepIndex + 1} of {total}</span>
           <span>{pct}%</span>
         </div>
-        <div className="h-1.5 rounded-full bg-[#e8e7e2] overflow-hidden">
-          <div className="h-full rounded-full bg-indigo-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+        <div className="h-1.5 rounded-full bg-[#e8e8e8] overflow-hidden">
+          <div className="h-full rounded-full bg-[#1a1a1a] transition-all duration-300" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {/* Step header */}
-      <div className="px-3 py-2 border-b border-[#e8e7e2] bg-[#faf9f5]">
-        <p className="text-[11px] font-semibold text-[#374151] uppercase tracking-wide">{step.title}</p>
+      <div className="px-3 py-2 border-b border-[#e8e8e8] bg-[#fafafa]">
+        <p className="text-[11px] font-bold text-[#111] tracking-wide uppercase">{step.title}</p>
         {step.type === 'add-block' && step.blockType && step.blockLabel && (
           <div className="mt-1.5"><BlockBadge blockType={step.blockType} label={`Add: ${step.blockLabel}`} /></div>
         )}
         {step.type === 'check' && (
-          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+          <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-[#555] bg-white border border-[#e8e8e8] rounded px-2 py-0.5 font-medium shadow-sm">
             <Lightbulb size={10} /> Validate your graph
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         {renderMarkdown(step.content)}
 
         {step.type === 'check' && checkResult && (
-          <div className={`mt-3 rounded-lg border p-3 text-xs ${
+          <div className={`mt-3 rounded-xl border p-3 text-xs ${
             checkResult.passed
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-[#f0fdf4] border-[#bbf7d0] text-[#166534]'
+              : 'bg-[#fef2f2] border-[#fecaca] text-[#991b1b]'
           }`}>
             <div className="flex items-start gap-2">
               {checkResult.passed
-                ? <CheckCircle2 size={14} className="shrink-0 mt-0.5 text-green-600" />
+                ? <CheckCircle2 size={14} className="shrink-0 mt-0.5 text-emerald-600" />
                 : <XCircle     size={14} className="shrink-0 mt-0.5 text-red-600" />}
-              <p className="leading-relaxed">{checkResult.message}</p>
+              <p className="leading-relaxed font-medium">{checkResult.message}</p>
             </div>
             {!checkResult.passed && checkResult.hint && (
-              <div className="mt-2 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded p-2 text-amber-800">
-                <Lightbulb size={12} className="shrink-0 mt-0.5" />
-                <p>{checkResult.hint}</p>
+              <div className="mt-3 flex items-start gap-1.5 bg-white rounded-lg p-2 text-[#555] border border-[#e8e8e8] shadow-sm">
+                <Lightbulb size={12} className="shrink-0 mt-0.5 text-[#888]" />
+                <p className="leading-snug">{checkResult.hint}</p>
               </div>
             )}
           </div>
@@ -277,17 +292,17 @@ function LessonPanel({ course }: { course: Course }) {
       </div>
 
       {/* Footer nav */}
-      <div className="border-t border-[#e8e7e2] p-3 flex items-center gap-2">
+      <div className="border-t border-[#e8e8e8] p-3 flex items-center gap-2 bg-[#fafafa]">
         <button
           onClick={goPrev} disabled={isFirst}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium text-stone-600 border border-stone-200 hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center gap-1 h-8 px-3 rounded-lg text-[12px] font-medium text-[#555] border border-[#e8e8e8] hover:bg-[#fafafa] hover:text-[#111] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft size={14} /> Prev
         </button>
         {step.type === 'check' && (
           <button
             onClick={runCheck}
-            className="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+            className="flex-1 flex items-center justify-center h-8 px-3 rounded-lg text-[12px] font-semibold bg-white border border-[#e8e8e8] text-[#111] hover:bg-[#fafafa] hover:border-[#d4d4d4] transition-colors shadow-sm"
           >
             Check My Graph
           </button>
@@ -295,7 +310,7 @@ function LessonPanel({ course }: { course: Course }) {
         <button
           onClick={goNext}
           disabled={isLast || (step.type === 'check' && checkResult?.passed !== true)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors ml-auto"
+          className="flex items-center justify-center gap-1 h-8 px-3 rounded-lg text-[12px] font-medium bg-[#1a1a1a] text-white hover:bg-[#222] disabled:opacity-30 disabled:cursor-not-allowed transition-colors ml-auto shadow-sm"
         >
           {isLast ? 'Done' : 'Next'} <ChevronRight size={14} />
         </button>
@@ -313,8 +328,20 @@ interface RightSidebarProps {
 export function RightSidebar({ course }: RightSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const showLesson = !!course;
-  const defaultTab = showLesson ? 'lesson' : 'ai';
-  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  const [activeTab, setActiveTab] = useState<'lesson' | 'ai'>(showLesson ? 'lesson' : 'ai');
+
+  // If course changes or becomes available, ensure we switch to lesson tab
+  // If course is removed, fall back strictly to 'ai' tab
+  useEffect(() => {
+    if (showLesson) {
+      setActiveTab('lesson');
+    } else {
+      setActiveTab('ai');
+    }
+  }, [course?.id, showLesson]);
+
+  const safeTab = showLesson ? activeTab : 'ai';
 
   return (
     <>
@@ -331,22 +358,22 @@ export function RightSidebar({ course }: RightSidebarProps) {
 
       <aside
         className={`hidden lg:flex flex-col bg-white h-full transition-all duration-200 ease-in-out ${
-          collapsed ? 'w-0 border-l-0 overflow-hidden' : 'w-[360px] border-l border-[#e8e8e8]'
+          collapsed ? 'w-0 border-l-0 overflow-hidden' : 'w-[360px] border-l border-[#e8e8e8] overflow-hidden'
         }`}
       >
         {!collapsed && (
           <Tabs
             variant="secondary"
-            selectedKey={activeTab}
-            onSelectionChange={k => setActiveTab(String(k))}
-            className="flex flex-col h-full gap-0"
+            selectedKey={safeTab}
+            onSelectionChange={k => setActiveTab(k as 'lesson' | 'ai')}
+            className="flex flex-col h-full gap-0 overflow-x-hidden overflow-y-hidden"
           >
             {/* Header */}
-            <div className="flex items-center border-b border-[#e8e8e8] shrink-0 bg-white">
-              <Tabs.ListContainer className="flex-1 h-5.5">
+            <div className="flex items-center border-b border-[#e8e8e8] shrink-0 bg-white overflow-hidden">
+              <Tabs.ListContainer className="flex-1 h-5.5 overflow-hidden">
                 <Tabs.List
                   aria-label="Sidebar panels"
-                  className="flex border-b-0 [&>button]:h-auto [&>button]:px-4 [&>button]:py-3 [&>button]:rounded-none [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-[#aaa] [&>button[data-selected=true]]:!text-[#1c1917] [&>button[data-selected=true]]:!font-semibold [&>button]:cursor-pointer [&>button:hover]:text-[#555] [&>button]:transition-colors"
+                  className="flex border-b-0 overflow-hidden [&>button]:h-auto [&>button]:px-4 [&>button]:py-3 [&>button]:rounded-none [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-[#aaa] [&>button[data-selected=true]]:!text-[#1c1917] [&>button[data-selected=true]]:!font-semibold [&>button]:cursor-pointer [&>button:hover]:text-[#555] [&>button]:transition-colors"
                  >
                   {showLesson && (
                     <Tabs.Tab id="lesson">

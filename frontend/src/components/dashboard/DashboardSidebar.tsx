@@ -20,19 +20,17 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ activeTab, setActiveTab }: DashboardSidebarProps) {
   const { user, signOut } = useAuthStore();
+  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || (user?.email ? user.email.split('@')[0] : 'User');
 
   return (
     <Sidebar className="border-r border-[#e8e8e8] bg-white">
       <SidebarHeader className="p-4 flex flex-row items-center gap-3 border-b border-[#e8e8e8]">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1a1a1a] text-white shadow-sm">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1a1a1a] text-white shadow-sm">
           <Blocks size={16} />
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold text-[#111] tracking-tight leading-none mb-1">
-            ScratchMyAi
-          </span>
-          <span className="text-[10px] font-bold text-[#888] tracking-widest uppercase">
-            Platform
+        <div className="flex flex-col justify-center">
+          <span className="text-sm font-semibold text-[#111] tracking-tight leading-none">
+            ScratchMyAI
           </span>
         </div>
       </SidebarHeader>
@@ -93,11 +91,11 @@ export function DashboardSidebar({ activeTab, setActiveTab }: DashboardSidebarPr
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3">
             <Avatar size="sm" className="bg-stone-200 text-stone-700">
-              <Avatar.Fallback className="text-xs font-medium">{user?.email?.charAt(0).toUpperCase() || 'U'}</Avatar.Fallback>
+              <Avatar.Fallback className="text-xs font-medium">{displayName.charAt(0).toUpperCase()}</Avatar.Fallback>
             </Avatar>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-[#111] leading-none line-clamp-1">
-                {user?.email ? user.email.split('@')[0] : 'User'}
+                {displayName}
                </span>
              </div>
           </div>

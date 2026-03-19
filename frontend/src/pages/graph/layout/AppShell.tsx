@@ -25,6 +25,7 @@ import { whatIsRnn } from "@/pages/learn/courses/whatIsRnn";
 import { makingLstms } from "@/pages/learn/courses/makingLstms";
 import { firstTransformer } from "@/pages/learn/courses/firstTransformer";
 import { useStore } from "@/store/useStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
@@ -110,13 +111,34 @@ function CanvasDock({
   );
 }
 
-function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
+function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCourseId?: string }) {
   const { id } = useParams<{ id?: string }>();
-  const lessonCourse = lessonCourseId ? LESSON_COURSES[lessonCourseId] : undefined;
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   const { screenToFlowPosition, fitView } = useReactFlow();
   const [menu, setMenu] = useState<ContextMenuData | null>(null);
+
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    setNodes,
+    setEdges,
+    setTitle,
+    setGraphId: setWorkflowId,
+    setTrainingConfig,
+    courseId,
+    setCourseId,
+    setStepIndex,
+    setCheckResult,
+    setHintLevel,
+  } = useStore();
+
+  const lessonCourse = courseId ? LESSON_COURSES[courseId] : undefined;
+  const user = useAuthStore(s => s.user);
+
 
   // References for middle mouse button temporary pan mode
   const interactionModeRef = useRef(interactionMode);
@@ -145,28 +167,42 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
       window.removeEventListener('pointerup', handlePointerUp);
     };
   }, []);
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-    setNodes,
-    setEdges,
-    setTitle,
-    setGraphId: setWorkflowId,
-    setTrainingConfig,
-  } = useStore();
+
 
   // Load existing graph or reset to a blank canvas
   useEffect(() => {
     if (id) {
       loadGraph(id)
-        .then((row) => {
+        .then(async (row) => {
           setWorkflowId(row.id);
           setTitle(row.title);
           setNodes(row.nodes);
           setEdges(row.edges);
+          setCourseId(row.course_id || null);
+          setCheckResult(null);
+          setHintLevel(0);
+
+          // If it's a course graph, try to fetch progress to set step
+          if (row.course_id && user) {
+            try {
+              const { getSingleCourseProgress } = await import('@/lib/courseFunctions');
+              const progress = await getSingleCourseProgress(user.id, row.course_id);
+              if (progress) {
+                const courseDef = LESSON_COURSES[row.course_id];
+                if (courseDef) {
+                  // Calculate approximate step index from percentage
+                  const index = Math.min(
+                    courseDef.steps.length - 1,
+                    Math.floor((progress.progress_percentage / 100) * (courseDef.steps.length - 1))
+                  );
+                  setStepIndex(index);
+                }
+              }
+            } catch (err) {
+              console.error("Failed to fetch course progress for resumption:", err);
+            }
+          }
+
           if (row.training_config) {
             setTrainingConfig(row.training_config);
           }
@@ -175,9 +211,17 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
     } else {
       // New workflow — reset to defaults
       setWorkflowId(null);
-      setTitle("Untitled");
+      setCourseId(initialLessonCourseId || null);
+      
+      const courseIds = Object.keys(LESSON_COURSES);
+      const courseIndex = courseIds.indexOf(initialLessonCourseId || "");
+      setTitle(initialLessonCourseId && courseIndex !== -1 ? `Course ${courseIndex + 1}` : "Untitled");
+      
       setNodes([]);
       setEdges([]);
+      setStepIndex(0);
+      setCheckResult(null);
+      setHintLevel(0);
       // Reset training config to defaults
       setTrainingConfig({
         loss: "CrossEntropy",
@@ -186,7 +230,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
         epochs: 5,
       });
     }
-  }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, fitView]);
+  }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, setCourseId, setStepIndex, setCheckResult, setHintLevel, initialLessonCourseId, user]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -223,7 +267,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
 
   return (
     <>
-      <div className="flex flex-col h-screen w-screen bg-[#fcfcfc] text-[#1c1917] overflow-hidden">
+      <div className="flex flex-col h-screen w-full bg-[#fcfcfc] text-[#1c1917] overflow-hidden">
         <TitleBar />
 
         <div className="flex flex-1 overflow-hidden">

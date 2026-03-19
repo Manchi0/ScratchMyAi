@@ -1,4 +1,5 @@
 import { type TrainedModelSummary } from '@/lib/modelFunctions';
+import { Button } from "@heroui/react";
 import { Trash2 } from 'lucide-react';
 
 interface InferenceModelCardProps {
@@ -18,16 +19,18 @@ export function InferenceModelCard({ model, isSelected, onSelect, onDelete }: In
           : 'border-stone-200 bg-white hover:border-indigo-300 hover:shadow-sm'
       }`}
     >
-      <button
+      <Button
+        isIconOnly
+        size="sm"
+        variant="ghost"
         onClick={(e) => {
           e.stopPropagation();
           onDelete(model.id);
         }}
-        className="absolute top-3 right-3 p-1.5 rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-        title="Delete model"
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all bg-white shadow-sm z-10 border border-[#e8e8e8] text-neutral-400 hover:bg-red-50 hover:text-red-500 w-8 h-8 min-w-8"
       >
-        <Trash2 size={16} />
-      </button>
+        <Trash2 size={14} />
+      </Button>
 
       <div className="flex justify-between items-start mb-1 pr-8">
         <h4 className="font-semibold text-stone-900">{model.name || "Untitled Model"}</h4>

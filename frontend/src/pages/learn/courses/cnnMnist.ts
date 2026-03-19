@@ -45,7 +45,7 @@ export const cnnMnist: Course = {
       id: 'welcome',
       title: 'Welcome',
       type: 'intro',
-      content: `# Simple CNN with MNIST 🖼️
+      content: `# Simple CNN with MNIST
 
 In the last lesson you built an MLP — a network that treats each pixel independently. It works, but it throws away spatial structure.
 
@@ -76,9 +76,9 @@ Two new blocks join the ones you already know from the MLP lesson.
 | Block | Category | New? | Role |
 |-------|----------|------|------|
 | **Dataset** | Input | — | Loads MNIST images |
-| **Conv2d** | Layer | ✨ New | Learns spatial filters |
+| **Conv2d** | Layer | New | Learns spatial filters |
 | **ReLU** | Activation | — | Non-linearity (×3) |
-| **AvgPool2d** | Layer | ✨ New | Downsamples feature maps (×2) |
+| **AvgPool2d** | Layer | New | Downsamples feature maps (×2) |
 | **Flatten** | Layer | — | Reshapes 3D tensor → 1D vector |
 | **Linear** | Layer | — | Fully-connected classifier (×2) |
 | **Softmax** | Activation | — | Converts scores to probabilities |
@@ -473,7 +473,7 @@ Click **Check My Graph**!`,
           }
         }
 
-        return { passed: true, message: '🎉 CNN complete! Hit Save and Train — expect ~98–99% accuracy on MNIST.', hint: null };
+        return { passed: true, message: 'CNN complete! Hit Save and Train — expect ~98–99% accuracy on MNIST.', hint: null };
       },
     },
   ],

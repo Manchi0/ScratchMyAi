@@ -38,7 +38,7 @@ export const makingLstms: Course = {
       id: 'welcome',
       title: 'Welcome',
       type: 'intro',
-      content: `# Making LSTMs Using RNNs 🧠
+      content: `# Making LSTMs Using RNNs
 
 In the last lesson you built a vanilla RNN. It works — but it has a serious flaw: **the vanishing gradient problem**.
 
@@ -279,7 +279,7 @@ Click **Check My Graph**!`,
           if (!canReach(nodes, edges, s, t))
             return { passed: false, message: `Missing connection: ${s} → ${t}.`, hint: hintLevel >= 1 ? `Draw a wire from the ${s} block to the ${t} block.` : `Connect ${s} → ${t}.` };
         }
-        return { passed: true, message: '🎉 LSTM pipeline complete! Save and Train — expect ~98% accuracy.', hint: null };
+        return { passed: true, message: 'LSTM pipeline complete! Save and Train — expect ~98% accuracy.', hint: null };
       },
     },
   ],

@@ -10,6 +10,7 @@ import {
   addEdge,
 } from "@xyflow/react";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
+import type { CheckResult } from "@/pages/learn/courses/mlpIntro";
 
 export interface TrainingConfig {
   loss: string;
@@ -22,6 +23,9 @@ interface AppState {
   // Workflow identity
   graphId: string | null;
   setGraphId: (id: string | null) => void;
+
+  courseId: string | null;
+  setCourseId: (id: string | null) => void;
 
   // Workflow Title
   title: string;
@@ -40,11 +44,22 @@ interface AppState {
   // Training Configuration
   trainingConfig: TrainingConfig;
   setTrainingConfig: (config: Partial<TrainingConfig>) => void;
+
+  // Lesson State
+  stepIndex: number;
+  setStepIndex: (index: number) => void;
+  checkResult: CheckResult | null;
+  setCheckResult: (result: CheckResult | null) => void;
+  hintLevel: number;
+  setHintLevel: (level: number | ((prev: number) => number)) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
   graphId: null,
   setGraphId: (id) => set({ graphId: id }),
+
+  courseId: null,
+  setCourseId: (id) => set({ courseId: id }),
 
   title: "Untitled",
   setTitle: (title) => set({ title }),
@@ -121,5 +136,18 @@ export const useStore = create<AppState>((set, get) => ({
         ...config,
       },
     }));
+  },
+
+  stepIndex: 0,
+  setStepIndex: (stepIndex) => set({ stepIndex }),
+  checkResult: null,
+  setCheckResult: (checkResult) => set({ checkResult }),
+  hintLevel: 0,
+  setHintLevel: (level) => {
+    if (typeof level === 'function') {
+      set((state) => ({ hintLevel: level(state.hintLevel) }));
+    } else {
+      set({ hintLevel: level });
+    }
   },
 }));

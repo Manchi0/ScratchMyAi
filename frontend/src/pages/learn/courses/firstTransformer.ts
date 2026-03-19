@@ -38,7 +38,7 @@ export const firstTransformer: Course = {
       id: 'welcome',
       title: 'Welcome',
       type: 'intro',
-      content: `# Making Your First Transformer ⚡
+      content: `# Making Your First Transformer
 
 RNNs and LSTMs process sequences **step by step** — they're inherently sequential. Step 5 can only be processed after steps 1–4, which makes training slow and limits parallelism.
 
@@ -94,8 +94,8 @@ This score becomes a weight on \`V_j\`, so position \`i\`'s output is a weighted
 | Block | Category | New? | Role |
 |-------|----------|------|------|
 | **Dataset** | Input | — | MNIST as 28 timesteps × 28 features |
-| **Positional Encoding** | Layer | ✨ New | Injects position info into the sequence |
-| **Transformer Encoder Layer** | Layer | ✨ New | Self-attention + feed-forward sublayers |
+| **Positional Encoding** | Layer | New | Injects position info into the sequence |
+| **Transformer Encoder Layer** | Layer | New | Self-attention + feed-forward sublayers |
 | **Flatten** | Layer | — | Collapses sequence dimension for classifier |
 | **Linear** | Layer | — | Maps features → 10 class scores |
 | **Softmax** | Activation | — | Scores → probabilities |
@@ -196,7 +196,7 @@ Drag a **Transformer Encoder Layer** block and connect **Positional Encoding** �
 
 Parameters:
 - **d_model:** \`28\` (must match positional encoding)
-- **nhead:** \`4\` (number of attention heads — must divide d_model evenly: 28 / 4 = 7 ✓)
+- **nhead:** \`4\` (number of attention heads — must divide d_model evenly: 28 / 4 = 7)
 - **dim_feedforward:** \`128\` (hidden size of the internal feed-forward network)
 - **dropout:** \`0.1\`
 - **activation:** \`relu\`
@@ -322,7 +322,7 @@ Drag an **Output** block and connect **Softmax** → **Output**.
 
 **What you've built is a miniature Vision Transformer.** Real ViTs do the same thing — split the image into patches, apply positional encoding, run transformer encoder layers, classify from the output — just at much larger scale.
 
-The model you trained here uses the same fundamental architecture as GPT, BERT, and ViT. You've gone from pixels to attention. 🚀`,
+The model you trained here uses the same fundamental architecture as GPT, BERT, and ViT. You've gone from pixels to attention.`,
     },
 
     {
@@ -365,7 +365,7 @@ Click **Check My Graph**!`,
           if (!canReach(nodes, edges, s, t))
             return { passed: false, message: `Missing connection: ${s} → ${t}.`, hint: hintLevel >= 1 ? `Draw a wire from the ${s} block to the ${t} block.` : `Connect ${s} → ${t}.` };
         }
-        return { passed: true, message: '🎉 Transformer pipeline complete! You\'ve built a miniature Vision Transformer. Save and Train!', hint: null };
+        return { passed: true, message: 'Transformer pipeline complete! You\'ve built a miniature Vision Transformer. Save and Train!', hint: null };
       },
     },
   ],
