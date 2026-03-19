@@ -1,4 +1,8 @@
-import { Settings, ChevronDown } from "lucide-react";
+import { Settings } from "lucide-react";
+import { Button } from "@heroui/react/button";
+import { Select } from "@heroui/react/select";
+import { Input } from "@heroui/react/input";
+import { ListBox } from "@heroui/react/list-box";
 
 interface TrainingConfig {
   loss: string;
@@ -26,95 +30,114 @@ export function TrainButton({
 }: TrainButtonProps) {
   return (
     <div className="relative">
-      <button
-        onClick={() => setShowConfig(!showConfig)}
-        className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none px-4 py-1.5 shadow-sm ${
-          showConfig
-            ? "bg-stone-800 text-white"
-            : "bg-neutral-900 text-white hover:bg-neutral-800"
-        }`}
+      <Button
+        onPress={() => setShowConfig(!showConfig)}
+        variant={showConfig ? "tertiary" : "primary"}
       >
         <span>Train</span>
-        <ChevronDown size={14} className={`transition-transform ${showConfig ? 'rotate-180' : ''}`} />
-      </button>
+        <Settings size={15} className="transition-transform" />
+      </Button>
 
       {showConfig && (
         <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-stone-200 p-5 z-50 animate-in fade-in zoom-in duration-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold text-stone-900 uppercase tracking-widest text-center">Training Config</h3>
-            <Settings size={14} className="text-stone-400" />
+          <div className="flex items-center mb-4">
+            <h3 className="text-xs font-bold text-stone-900 uppercase tracking-widest">Training Config</h3>
           </div>
 
           <div className="space-y-4">
             {/* Loss */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Loss Function</label>
-              <select
+            <div>
+              <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter mb-1">Loss Function</div>
+              <Select
+                aria-label="Loss Function"
+                variant="secondary"
                 value={trainingConfig.loss}
-                onChange={(e) => setTrainingConfig({ loss: e.target.value })}
-                className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 bg-stone-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20"
+                onChange={(value) => { if (value) setTrainingConfig({ loss: String(value) }); }}
               >
-                <option value="CrossEntropy">CrossEntropy (Classification)</option>
-                <option value="MSELoss">MSELoss (Regression)</option>
-                <option value="L1Loss">L1Loss</option>
-                <option value="NLLLoss">NLLLoss</option>
-              </select>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="CrossEntropy" textValue="CrossEntropy (Classification)">CrossEntropy (Classification)</ListBox.Item>
+                    <ListBox.Item id="MSELoss" textValue="MSELoss (Regression)">MSELoss (Regression)</ListBox.Item>
+                    <ListBox.Item id="L1Loss" textValue="L1Loss">L1Loss</ListBox.Item>
+                    <ListBox.Item id="NLLLoss" textValue="NLLLoss">NLLLoss</ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
             </div>
 
             {/* Optimizer */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Optimizer</label>
-              <select
+            <div>
+              <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter mb-1">Optimizer</div>
+              <Select
+                aria-label="Optimizer"
+                variant="secondary"
                 value={trainingConfig.optimizer}
-                onChange={(e) => setTrainingConfig({ optimizer: e.target.value })}
-                className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 bg-stone-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20"
+                onChange={(value) => { if (value) setTrainingConfig({ optimizer: String(value) }); }}
               >
-                <option value="Adam">Adam (Recommended)</option>
-                <option value="SGD">SGD</option>
-                <option value="RMSprop">RMSprop</option>
-                <option value="Adagrad">Adagrad</option>
-              </select>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox>
+                    <ListBox.Item id="Adam" textValue="Adam (Recommended)">Adam (Recommended)</ListBox.Item>
+                    <ListBox.Item id="SGD" textValue="SGD">SGD</ListBox.Item>
+                    <ListBox.Item id="RMSprop" textValue="RMSprop">RMSprop</ListBox.Item>
+                    <ListBox.Item id="Adagrad" textValue="Adagrad">Adagrad</ListBox.Item>
+                  </ListBox>
+                </Select.Popover>
+              </Select>
             </div>
 
             {/* Learning Rate & Epochs Grid */}
             <div className="grid grid-cols-2 gap-3 pb-2">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Learn Rate</label>
-                <input
+                <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Learn Rate</div>
+                <Input
                   type="number"
                   step="0.0001"
-                  value={trainingConfig.learning_rate}
+                  value={String(trainingConfig.learning_rate)}
                   onChange={(e) => setTrainingConfig({ learning_rate: parseFloat(e.target.value) })}
-                  className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 bg-stone-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full text-xs"
+                  variant="secondary"
                 />
               </div>
+
               <div className="flex flex-col gap-1.5">
-                <label className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Epochs</label>
-                <input
+                <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-tighter">Epochs</div>
+                <Input
                   type="number"
-                  value={trainingConfig.epochs}
+                  step="1"
+                  value={String(trainingConfig.epochs)}
                   onChange={(e) => setTrainingConfig({ epochs: parseInt(e.target.value) })}
-                  className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 bg-stone-50 focus:bg-white transition-colors outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full text-xs"
+                  variant="secondary"
                 />
               </div>
             </div>
 
-            <div className="pt-4 border-t border-stone-100 flex flex-col gap-2">
-              <button
-                onClick={() => {
+            <div className="flex flex gap-2">
+              <Button
+                onPress={() => {
                   setShowConfig(false);
                   onTrain();
                 }}
-                className="w-full bg-indigo-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 flex items-center justify-center gap-2"
+                variant="primary"
+                fullWidth
               >
                 Start Training
-              </button>
-              <button
-                onClick={onExport}
-                className="w-full bg-white text-stone-600 border border-stone-200 rounded-lg py-2 text-xs font-medium hover:bg-stone-50 transition-colors"
+              </Button>
+              <Button
+                onPress={onExport}
+                variant="outline"
+                fullWidth
               >
-                Export JSON Reference
-              </button>
+                Export JSON
+              </Button>
             </div>
           </div>
         </div>

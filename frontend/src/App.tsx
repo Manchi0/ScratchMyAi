@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '@/pages/auth/LoginPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import { ReactFlowProvider } from '@xyflow/react';
-import { AppShell } from '@/pages/graph/layout/AppShell';
+import { AppShell, LessonShell } from '@/pages/graph/layout/AppShell';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -83,6 +83,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <AppShellWrapper />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/learn/:courseId"
+            element={
+              <ProtectedRoute>
+                <LessonShell />
               </ProtectedRoute>
             }
           />

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
+import { Button } from "@heroui/react/button";
+import { Input } from "@heroui/react/input";
+import { Spinner } from "@heroui/react/spinner";
 import { useStore } from "@/store/useStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { saveGraph } from "@/lib/graphFunctions";
@@ -74,34 +77,46 @@ export function TitleBar() {
     <>
       <header className="flex items-center justify-between h-12 px-2.5 border-b border-[#e8e7e2] bg-white shrink-0">
         <div className="w-24">
-          <button
+          <Button
             onClick={() => navigate('/dashboard')}
-            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-            title="Back to dashboard"
+            variant="ghost"
+            isIconOnly
+            aria-label="Back to dashboard"
           >
             <ArrowLeft size={18} />
-          </button>
+          </Button>
         </div>
 
-        <div className="flex items-center h-8 px-1 rounded-md hover:bg-[#f8f7f4] transition-colors group">
-          <input
+        <div className="flex items-center h-8 px-1">
+          <Input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-sm font-medium text-[#57534e] bg-transparent border-none outline-none focus:text-[#1c1917] w-64 px-1 text-center"
+            variant="primary"
+            className="font-semibold w-64 text-[14px] text-center shadow-none text-stone-700"
             placeholder="Untitled"
             spellCheck={false}
           />
         </div>
 
         <div className="w-auto flex justify-end gap-2 relative">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 bg-stone-100 text-[#57534e] hover:bg-stone-200 px-4 py-1.5 shadow-sm"
+          <Button
+            onPress={handleSave}
+            isDisabled={saving}
+            isPending={saving}
+            variant="tertiary"
           >
-            {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
-          </button>
+            {({ isPending }) => (
+              <div className="flex items-center gap-1.5">
+                {isPending ? (
+                  <Spinner size="sm" color="current" />
+                ) : (
+                  <Save size={16} />
+                )}
+                <span>Save</span>
+              </div>
+            )}
+          </Button>
 
           <TrainButton
             showConfig={showConfig}
@@ -116,10 +131,10 @@ export function TitleBar() {
 
       {/* Render Modal conditionally, only when open, to ensure it mounts properly */}
       {isTrainingModalOpen && graphDataForTraining && (
-        <TrainingConsole 
-          isOpen={isTrainingModalOpen} 
-          onClose={() => setIsTrainingModalOpen(false)} 
-          graphData={graphDataForTraining} 
+        <TrainingConsole
+          isOpen={isTrainingModalOpen}
+          onClose={() => setIsTrainingModalOpen(false)}
+          graphData={graphDataForTraining}
           title={title}
         />
       )}
