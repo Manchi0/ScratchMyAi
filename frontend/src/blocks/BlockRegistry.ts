@@ -11,8 +11,13 @@ import { LayerNormBlock } from '@/blocks/layers/LayerNormBlock';
 import { EmbeddingBlock } from '@/blocks/layers/EmbeddingBlock';
 import { LSTMBlock } from '@/blocks/layers/LSTMBlock';
 import { GRUBlock } from '@/blocks/layers/GRUBlock';
+import { RnnBlock } from '@/blocks/layers/RnnBlock';
+import { PositionalEncodingBlock } from '@/blocks/layers/PositionalEncodingBlock';
+import { SelfAttentionBlock } from '@/blocks/layers/SelfAttentionBlock';
+import { TransformerEncoderLayerBlock } from '@/blocks/layers/TransformerEncoderLayerBlock';
 import { ReluBlock } from '@/blocks/activations/ReluBlock';
 import { SoftmaxBlock } from '@/blocks/activations/SoftmaxBlock';
+import { GeluBlock } from '@/blocks/activations/GeluBlock';
 import { DatasetBlock } from '@/blocks/inputs/DatasetBlock';
 import { OutputBlock } from '@/blocks/outputs/OutputBlock';
 
@@ -28,9 +33,14 @@ export const BlockRegistry: Record<string, BlockDefinition> = {
   upsample: new UpsampleBlock(),
   layernorm: new LayerNormBlock(),
   embedding: new EmbeddingBlock(),
+  rnn: new RnnBlock(),
   lstm: new LSTMBlock(),
   gru: new GRUBlock(),
+  positionalencoding: new PositionalEncodingBlock(),
+  selfattention: new SelfAttentionBlock(),
+  transformerencoderlayer: new TransformerEncoderLayerBlock(),
   relu: new ReluBlock(),
+  gelu: new GeluBlock(),
   softmax: new SoftmaxBlock(),
   output: new OutputBlock(),
 };

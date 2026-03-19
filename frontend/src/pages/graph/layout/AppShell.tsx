@@ -20,6 +20,9 @@ import { AIAgentSidebar } from "./AIAgentSidebar";
 import { LessonSidebar } from "@/pages/learn/LessonSidebar";
 import { mlpIntro } from "@/pages/learn/courses/mlpIntro";
 import { cnnMnist } from "@/pages/learn/courses/cnnMnist";
+import { whatIsRnn } from "@/pages/learn/courses/whatIsRnn";
+import { makingLstms } from "@/pages/learn/courses/makingLstms";
+import { firstTransformer } from "@/pages/learn/courses/firstTransformer";
 import { useStore } from "@/store/useStore";
 import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
@@ -31,6 +34,9 @@ import type { Course } from "@/pages/learn/courses/mlpIntro";
 const LESSON_COURSES: Record<string, Course> = {
   'mlp-intro': mlpIntro,
   'simple-cnn-mnist': cnnMnist,
+  'what-is-rnn': whatIsRnn,
+  'making-lstms': makingLstms,
+  'first-transformer': firstTransformer,
 };
 
 const nodeTypes = {

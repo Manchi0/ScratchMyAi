@@ -33,15 +33,7 @@ const COURSES: CourseCard[] = [
     description: 'Understand recurrent neural networks and how they process sequential data.',
     difficulty: 'Intermediate',
     estimatedMinutes: 20,
-    available: false,
-  },
-  {
-    id: 'more-complex-structures',
-    title: 'More Complex Structures',
-    description: 'Explore residual connections, skip paths, and deeper architectures.',
-    difficulty: 'Intermediate',
-    estimatedMinutes: 30,
-    available: false,
+    available: true,
   },
   {
     id: 'making-lstms',
@@ -49,7 +41,7 @@ const COURSES: CourseCard[] = [
     description: 'Build Long Short-Term Memory networks to handle longer-range dependencies.',
     difficulty: 'Intermediate',
     estimatedMinutes: 30,
-    available: false,
+    available: true,
   },
   {
     id: 'first-transformer',
@@ -57,7 +49,7 @@ const COURSES: CourseCard[] = [
     description: 'Assemble an attention-based transformer architecture block by block.',
     difficulty: 'Advanced',
     estimatedMinutes: 45,
-    available: false,
+    available: true,
   },
 ];
 
