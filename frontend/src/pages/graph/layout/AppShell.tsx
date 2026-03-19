@@ -18,8 +18,7 @@ import { Dock, DockIcon } from "@/components/ui/dock";
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
-import { AIAgentSidebar } from "./AIAgentSidebar";
-import { LessonSidebar } from "@/pages/learn/LessonSidebar";
+import { RightSidebar } from "./RightSidebar";
 import { mlpIntro } from "@/pages/learn/courses/mlpIntro";
 import { cnnMnist } from "@/pages/learn/courses/cnnMnist";
 import { useStore } from "@/store/useStore";
@@ -62,38 +61,34 @@ function CanvasDock({
       <Dock direction="middle" className="bg-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-[#eeeeee] px-2 h-14 rounded-full items-center gap-1">
         <DockIcon 
           onClick={() => setInteractionMode('select')}
-          className={`cursor-pointer w-10 h-10 rounded-xl transition-colors ${
-            interactionMode === 'select' 
-              ? 'bg-[#f5f5f5] text-[#1c1917]' 
-              : 'text-[#78716c] hover:text-[#1c1917]'
-          }`}
+          className="cursor-pointer transition-colors text-[#78716c] hover:text-[#1c1917]"
         >
-          <MousePointer2 size={20} strokeWidth={2} />
+          <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${interactionMode === 'select' ? 'bg-[#f1f1f1] text-[#1c1917]' : ''}`}>
+            <MousePointer2 className="w-5 h-5" strokeWidth={2} />
+          </div>
         </DockIcon>
         
         <DockIcon 
           onClick={() => setInteractionMode('pan')}
-          className={`cursor-pointer w-10 h-10 rounded-xl transition-colors ${
-            interactionMode === 'pan' 
-              ? 'bg-[#f5f5f5] text-[#1c1917]' 
-              : 'text-[#78716c] hover:text-[#1c1917]'
-          }`}
+          className="cursor-pointer transition-colors text-[#78716c] hover:text-[#1c1917]"
         >
-          <Hand size={20} strokeWidth={2} />
+          <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${interactionMode === 'pan' ? 'bg-[#f1f1f1] text-[#1c1917]' : ''}`}>
+             <Hand className="w-5 h-5" strokeWidth={2} />
+          </div>
         </DockIcon>
 
         <div className="w-[1px] h-6 bg-[#e5e5e5] mx-1" />
 
-        <DockIcon onClick={handleZoomOut} className="cursor-pointer w-10 h-10 text-[#78716c] hover:text-[#1c1917] rounded-xl transition-colors">
-          <ZoomOut size={20} strokeWidth={2} />
+        <DockIcon onClick={handleZoomOut} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors">
+          <ZoomOut className="w-5 h-5" strokeWidth={2} />
         </DockIcon>
 
         <div className="w-12 text-center text-[13px] font-semibold text-[#8a8a8a] select-none">
           {displayZoom}%
         </div>
 
-        <DockIcon onClick={handleZoomIn} className="cursor-pointer w-10 h-10 text-[#78716c] hover:text-[#1c1917] rounded-xl transition-colors">
-          <ZoomIn size={20} strokeWidth={2} />
+        <DockIcon onClick={handleZoomIn} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors">
+          <ZoomIn className="w-5 h-5" strokeWidth={2} />
         </DockIcon>
       </Dock>
     </div>
@@ -212,7 +207,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
 
   return (
     <>
-      <div className="flex flex-col h-screen w-screen bg-[#f8f7f4] text-[#1c1917] overflow-hidden">
+      <div className="flex flex-col h-screen w-screen bg-[#fcfcfc] text-[#1c1917] overflow-hidden">
         <TitleBar />
 
         <div className="flex flex-1 overflow-hidden">
@@ -239,11 +234,11 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
               selectionMode={SelectionMode.Partial}
               deleteKeyCode="Delete"
               proOptions={{ hideAttribution: true }}
-              style={{ backgroundColor: "#f8f7f4" }}
+              style={{ backgroundColor: "#fcfcfc" }}
               fitView
               fitViewOptions={{ padding: 0.2 }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
+              <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#d4d4d4" />
               
               <CanvasDock 
                 interactionMode={interactionMode} 
@@ -254,7 +249,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
             </ReactFlow>
           </div>
 
-          {lessonCourse ? <LessonSidebar course={lessonCourse} /> : <AIAgentSidebar />}
+          {lessonCourse ? <RightSidebar course={lessonCourse} /> : <RightSidebar />}
         </div>
 
         <StatusBar />

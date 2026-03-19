@@ -8,7 +8,6 @@ import uuid
 
 from db.supabase import get_supabase
 from services.inference_service import inference_service
-from services.claude_service import run_messages as run_claude_messages
 from services.openai_service import run_messages as run_openai_messages
 from api.routes.helperFunctions import (
     TrainRequest,
@@ -45,7 +44,6 @@ class AssistantMessage(BaseModel):
 
 
 class AssistantChatRequest(BaseModel):
-    provider: Literal["claude", "openai"] = "openai"
     message: str
     history: list[AssistantMessage] = Field(default_factory=list)
     graph: dict[str, Any] = Field(default_factory=dict)
@@ -54,7 +52,7 @@ class AssistantChatRequest(BaseModel):
 
 
 class AssistantChatResponse(BaseModel):
-    provider: Literal["claude", "openai"]
+    provider: str = "openai"
     model: str
     reply: str
 
@@ -117,14 +115,9 @@ async def assistant_chat(request: AssistantChatRequest, user_id: str = Depends(g
     messages = [*history_messages, {"role": "user", "content": prompt}]
 
     try:
-        if request.provider == "openai":
-            model = request.model or "gpt-4.1-mini"
-            reply = run_openai_messages(messages=messages, system=system_prompt, model=model)
-            return AssistantChatResponse(provider="openai", model=model, reply=reply)
-
-        model = request.model or "claude-opus-4-6"
-        reply = run_claude_messages(messages=messages, system=system_prompt, model=model)
-        return AssistantChatResponse(provider="claude", model=model, reply=reply)
+        model = request.model or "gpt-4.1-mini"
+        reply = run_openai_messages(messages=messages, system=system_prompt, model=model)
+        return AssistantChatResponse(provider="openai", model=model, reply=reply)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
