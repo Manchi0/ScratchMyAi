@@ -9,9 +9,11 @@ import {
   SelectionMode,
   useReactFlow,
   ReactFlowProvider,
+  useViewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Hand, MousePointer2 } from "lucide-react";
+import { Hand, MousePointer2, ZoomIn, ZoomOut } from "lucide-react";
+import { Dock, DockIcon } from "@/components/ui/dock";
 
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
@@ -40,6 +42,63 @@ const nodeTypes = {
 const edgeTypes = {
   wire: WireEdge,
 };
+
+function CanvasDock({
+  interactionMode,
+  setInteractionMode,
+}: {
+  interactionMode: 'pan' | 'select';
+  setInteractionMode: (mode: 'pan' | 'select') => void;
+}) {
+  const { zoomIn, zoomOut } = useReactFlow();
+  const { zoom } = useViewport();
+
+  const handleZoomIn = () => zoomIn({ duration: 200 });
+  const handleZoomOut = () => zoomOut({ duration: 200 });
+  const displayZoom = Math.round(zoom * 100);
+
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex">
+      <Dock direction="middle" className="bg-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-[#eeeeee] px-2 h-14 rounded-full items-center gap-1">
+        <DockIcon 
+          onClick={() => setInteractionMode('select')}
+          className={`cursor-pointer w-10 h-10 rounded-xl transition-colors ${
+            interactionMode === 'select' 
+              ? 'bg-[#f5f5f5] text-[#1c1917]' 
+              : 'text-[#78716c] hover:text-[#1c1917]'
+          }`}
+        >
+          <MousePointer2 size={20} strokeWidth={2} />
+        </DockIcon>
+        
+        <DockIcon 
+          onClick={() => setInteractionMode('pan')}
+          className={`cursor-pointer w-10 h-10 rounded-xl transition-colors ${
+            interactionMode === 'pan' 
+              ? 'bg-[#f5f5f5] text-[#1c1917]' 
+              : 'text-[#78716c] hover:text-[#1c1917]'
+          }`}
+        >
+          <Hand size={20} strokeWidth={2} />
+        </DockIcon>
+
+        <div className="w-[1px] h-6 bg-[#e5e5e5] mx-1" />
+
+        <DockIcon onClick={handleZoomOut} className="cursor-pointer w-10 h-10 text-[#78716c] hover:text-[#1c1917] rounded-xl transition-colors">
+          <ZoomOut size={20} strokeWidth={2} />
+        </DockIcon>
+
+        <div className="w-12 text-center text-[13px] font-semibold text-[#8a8a8a] select-none">
+          {displayZoom}%
+        </div>
+
+        <DockIcon onClick={handleZoomIn} className="cursor-pointer w-10 h-10 text-[#78716c] hover:text-[#1c1917] rounded-xl transition-colors">
+          <ZoomIn size={20} strokeWidth={2} />
+        </DockIcon>
+      </Dock>
+    </div>
+  );
+}
 
 function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
   const { id } = useParams<{ id?: string }>();
@@ -185,31 +244,11 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
               fitViewOptions={{ padding: 0.2 }}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
-              <Controls showInteractive={false} />
-
-              {/* Interaction Mode Toolbar */}
-              <div className="absolute bottom-24 left-3.5 z-10 flex flex-col bg-[#fefefe] shadow-[0_0_2px_1px_rgba(0,0,0,0.08)] rounded-[7px] overflow-hidden h-11.5 w-6">
-                <button
-                  onClick={() => setInteractionMode('pan')}
-                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] border-b-0 transition-colors ${interactionMode === 'pan'
-                    ? 'bg-stone-100 text-stone-900'
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
-                    }`}
-                  title="Pan Mode"
-                >
-                  <Hand size={14} />
-                </button>
-                <button
-                  onClick={() => setInteractionMode('select')}
-                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] transition-colors ${interactionMode === 'select'
-                    ? 'bg-stone-100 text-stone-900'
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
-                    }`}
-                  title="Select Mode"
-                >
-                  <MousePointer2 size={14} />
-                </button>
-              </div>
+              
+              <CanvasDock 
+                interactionMode={interactionMode} 
+                setInteractionMode={setInteractionMode} 
+              />
 
               {/* <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" /> */}
             </ReactFlow>
