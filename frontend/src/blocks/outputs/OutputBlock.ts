@@ -9,7 +9,7 @@ export class OutputBlock extends BlockDefinition {
   icon = Cpu;
   
   params: Record<string, BlockParameter> = {
-    name: { type: 'string', default: 'predictions', label: 'Name' }
+    name: { type: 'string', default: 'untitled', label: 'Name' }
   };
   
   inputs: BlockPort[] = [{ id: 'in', label: 'Input', type: 'tensor' }];

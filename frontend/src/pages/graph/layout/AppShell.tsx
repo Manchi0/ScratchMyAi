@@ -26,6 +26,7 @@ import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 import { loadGraph } from "@/lib/graphFunctions";
+import { ContextMenu, type ContextMenuData } from "./ContextMenu";
 
 import type { Course } from "@/pages/learn/courses/mlpIntro";
 
@@ -109,6 +110,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const [menu, setMenu] = useState<ContextMenuData | null>(null);
 
   // References for middle mouse button temporary pan mode
   const interactionModeRef = useRef(interactionMode);
@@ -234,18 +236,34 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
               onConnect={onConnect}
               onDragOver={onDragOver}
               onDrop={onDrop}
+              onNodeContextMenu={(e, node) => {
+                e.preventDefault();
+                setMenu({ id: node.id, top: e.clientY, left: e.clientX, type: 'node' });
+              }}
+              onEdgeContextMenu={(e, edge) => {
+                e.preventDefault();
+                setMenu({ id: edge.id, top: e.clientY, left: e.clientX, type: 'edge' });
+              }}
+              onPaneContextMenu={(e) => {
+                e.preventDefault();
+                setMenu({ top: e.clientY, left: e.clientX, type: 'pane' });
+              }}
+              onPaneClick={() => setMenu(null)}
+              onNodeDragStart={() => setMenu(null)}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               minZoom={0.1}
               panOnDrag={interactionMode === 'pan' ? [0, 1] : [1]}
               selectionOnDrag={interactionMode === 'select'}
               panOnScroll={true}
               selectionMode={SelectionMode.Partial}
-              deleteKeyCode="Delete"
+              selectNodesOnDrag={true}
+              deleteKeyCode={["Backspace", "Delete"]}
               proOptions={{ hideAttribution: true }}
               style={{ backgroundColor: "#fcfcfc" }}
               fitView
               fitViewOptions={{ padding: 0.2 }}
             >
+              {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
               <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#d4d4d4" />
               
               <CanvasDock 
