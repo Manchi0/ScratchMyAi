@@ -32,7 +32,7 @@ export function TrainButton({
     <div className="relative">
       <Button
         onPress={() => setShowConfig(!showConfig)}
-        variant={showConfig ? "tertiary" : "primary"}
+        variant="primary"
       >
         <span>Train</span>
         <Settings size={15} className="transition-transform" />

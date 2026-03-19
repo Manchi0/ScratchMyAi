@@ -12,7 +12,7 @@ import {
   useViewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Hand, MousePointer2, ZoomIn, ZoomOut } from "lucide-react";
+import { Hand, MousePointer2, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import { Dock, DockIcon } from "@/components/ui/dock";
 
 import { TitleBar } from "./TitleBar";
@@ -49,11 +49,13 @@ function CanvasDock({
   interactionMode: 'pan' | 'select';
   setInteractionMode: (mode: 'pan' | 'select') => void;
 }) {
-  const { zoomIn, zoomOut } = useReactFlow();
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { zoom } = useViewport();
 
   const handleZoomIn = () => zoomIn({ duration: 200 });
   const handleZoomOut = () => zoomOut({ duration: 200 });
+  const handleFitView = () => fitView({ duration: 400, padding: 0.1 });
+
   const displayZoom = Math.round(zoom * 100);
 
   return (
@@ -89,6 +91,12 @@ function CanvasDock({
 
         <DockIcon onClick={handleZoomIn} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors">
           <ZoomIn className="w-5 h-5" strokeWidth={2} />
+        </DockIcon>
+
+        <div className="w-[1px] h-6 bg-[#e5e5e5] mx-1" />
+
+        <DockIcon onClick={handleFitView} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors" title="Fit to screen">
+          <Maximize className="w-[18px] h-[18px]" strokeWidth={2} />
         </DockIcon>
       </Dock>
     </div>

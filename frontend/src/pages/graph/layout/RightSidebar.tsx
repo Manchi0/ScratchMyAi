@@ -343,20 +343,20 @@ export function RightSidebar({ course }: RightSidebarProps) {
           >
             {/* Header */}
             <div className="flex items-center border-b border-[#e8e8e8] shrink-0 bg-white">
-              <Tabs.ListContainer className="flex-1">
+              <Tabs.ListContainer className="flex-1 h-5.5">
                 <Tabs.List
                   aria-label="Sidebar panels"
-                  className="flex border-b-0 *:h-auto *:px-4 *:py-3 *:rounded-none *:text-[11px] *:font-medium *:text-[#aaa] *[data-selected=true]:text-[#111] *[data-selected=true]:font-semibold *:cursor-pointer hover:*:text-[#555] *:transition-colors"
+                  className="flex border-b-0 [&>button]:h-auto [&>button]:px-4 [&>button]:py-3 [&>button]:rounded-none [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-[#aaa] [&>button[data-selected=true]]:!text-[#1c1917] [&>button[data-selected=true]]:!font-semibold [&>button]:cursor-pointer [&>button:hover]:text-[#555] [&>button]:transition-colors"
                  >
                   {showLesson && (
                     <Tabs.Tab id="lesson">
-                      <span className="flex items-center gap-1.5"><BookOpen size={12} /> Lesson</span>
+                      <span className="flex mb-2 items-center gap-1.5"><BookOpen size={12} /> Lesson</span>
                       <Tabs.Indicator className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#1a1a1a]" />
                     </Tabs.Tab>
                   )}
                   <Tabs.Tab id="ai">
-                    <span className="flex items-center gap-1.5"><Bot size={12} /> AI Agent</span>
-                    <Tabs.Indicator className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#1a1a1a]" />
+                    <span className="flex mb-2 items-center gap-1.5"><Bot size={12} /> AI Agent</span>
+                    <Tabs.Indicator className="absolute left-0 right-0 h-[2px] bg-[#1c1917]" />
                   </Tabs.Tab>
                 </Tabs.List>
               </Tabs.ListContainer>
