@@ -64,13 +64,6 @@ export function LearnTab() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-neutral-800 mb-1">Learning ML</h2>
-        <p className="text-sm text-stone-500">
-          Step-by-step courses that guide you through building neural networks with AI-Blocks.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {COURSES.map((course, idx) => (
           <div
@@ -78,50 +71,46 @@ export function LearnTab() {
             onClick={() => course.available && navigate(`/learn/${course.id}`)}
             className={`relative flex flex-col rounded-xl border bg-white p-5 transition-all ${
               course.available
-                ? 'border-stone-200 hover:border-indigo-300 hover:shadow-md cursor-pointer group'
-                : 'border-stone-100 opacity-60 cursor-not-allowed select-none'
+                ? 'border-[#e8e8e8] hover:border-[#111] hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] cursor-pointer group'
+                : 'border-[#e8e8e8] opacity-60 cursor-not-allowed select-none bg-[#faf9f5]'
             }`}
           >
             {/* Course number */}
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-[#888] uppercase tracking-widest">
                 Course {idx + 1}
               </span>
-              {course.available ? (
-                <div className="flex items-center gap-1 text-indigo-600">
-                  <BookOpen size={14} />
-                </div>
-              ) : (
-                <Lock size={13} className="text-stone-300" />
+              {course.available ? null : (
+                <Lock size={13} className="text-[#888]" />
               )}
             </div>
 
             {/* Title */}
-            <h3 className="text-sm font-semibold text-neutral-800 leading-snug mb-2 flex-1">
+            <h3 className="text-[13px] font-semibold text-[#111] leading-tight mb-2 flex-1">
               {course.title}
             </h3>
 
             {/* Description */}
-            <p className="text-xs text-stone-500 leading-relaxed mb-4">
+            <p className="text-[12px] text-[#666] leading-relaxed mb-6">
               {course.description}
             </p>
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-auto pt-3 border-t border-stone-100">
+            <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#e8e8e8]">
               <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${difficultyColors[course.difficulty]}`}>
+                <span className={`text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-md border ${difficultyColors[course.difficulty]}`}>
                   {course.difficulty}
                 </span>
-                <span className="flex items-center gap-1 text-[10px] text-stone-400">
-                  <Clock size={10} />
-                  {course.estimatedMinutes} min
+                <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#888]">
+                  <Clock size={12} />
+                  {course.estimatedMinutes}m
                 </span>
               </div>
               {course.available && (
-                <ChevronRight size={14} className="text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+                <ChevronRight size={14} className="text-[#888] group-hover:text-[#111] transition-colors" />
               )}
               {!course.available && (
-                <span className="text-[10px] text-stone-400">Coming soon</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase text-[#888]">Coming soon</span>
               )}
             </div>
           </div>

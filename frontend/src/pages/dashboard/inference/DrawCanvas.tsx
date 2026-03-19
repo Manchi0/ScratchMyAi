@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { RefreshCw, Play, Upload } from 'lucide-react';
+import { Button } from '@heroui/react';
 
 interface DrawCanvasProps {
   onPredict: (tensorData: any[]) => Promise<number[]>;
@@ -343,16 +344,16 @@ export function DrawCanvas({ onPredict, dataset }: DrawCanvasProps) {
           <div className="space-y-2">
             {confidences.map((probability, classIndex) => (
               <div key={classIndex} className="grid grid-cols-[7rem_1fr_3.5rem] items-center gap-2 text-xs">
-                <span className={`truncate font-semibold ${classIndex === prediction ? 'text-indigo-700' : 'text-stone-500'}`}>
+                <span className={`truncate font-semibold ${classIndex === prediction ? 'text-[#111]' : 'text-[#888]'}`}>
                   {labels[classIndex] ?? classIndex}
                 </span>
                 <div className="h-2 overflow-hidden rounded-full bg-stone-200">
                   <div
-                    className={`h-full rounded-full ${classIndex === prediction ? 'bg-indigo-600' : 'bg-stone-400'}`}
+                    className={`h-full rounded-full ${classIndex === prediction ? 'bg-[#111]' : 'bg-[#e5e5e5]'}`}
                     style={{ width: `${Math.max(0, Math.min(100, probability * 100))}%` }}
                   />
                 </div>
-                <span className={`text-right ${classIndex === prediction ? 'font-semibold text-indigo-700' : 'text-stone-500'}`}>
+                <span className={`text-right ${classIndex === prediction ? 'font-semibold text-[#111]' : 'text-[#888]'}`}>
                   {(probability * 100).toFixed(1)}%
                 </span>
               </div>
@@ -369,32 +370,25 @@ export function DrawCanvas({ onPredict, dataset }: DrawCanvasProps) {
           onChange={handleImageUpload}
           className="hidden"
         />
-        <button
-          onClick={handlePickImage}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-800 transition-colors focus:outline-none"
+        <Button
+          onPress={handlePickImage}
+          variant="secondary"
         >
-          <Upload size={16} />
-          Upload Photo
-        </button>
-        <button 
-            onClick={clearCanvas}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-800 transition-colors focus:outline-none"
+          <div className="flex items-center gap-2"><Upload size={16} /> Upload Photo</div>
+        </Button>
+        <Button 
+            onPress={clearCanvas}
+            variant="secondary"
         >
-            <RefreshCw size={16} />
-            Clear
-        </button>
-        <button 
-            onClick={handlePredict}
-            disabled={loading}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none shadow-sm ${
-               loading 
-               ? 'bg-indigo-400 text-white cursor-not-allowed'
-               : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
+            <div className="flex items-center gap-2"><RefreshCw size={16} /> Clear</div>
+        </Button>
+        <Button 
+            onPress={handlePredict}
+            isDisabled={loading}
+            variant="primary"
         >
-            <Play size={16} className={loading ? "animate-pulse" : ""} />
-            {loading ? 'Thinking...' : 'Predict'}
-        </button>
+            <div className="flex items-center gap-2"><Play size={16} className={loading ? "animate-pulse" : ""} /> {loading ? 'Thinking...' : 'Predict'}</div>
+        </Button>
       </div>
     </div>
   );

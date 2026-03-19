@@ -4,6 +4,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { listGraphs, deleteGraph, type GraphSummary } from '@/lib/graphFunctions';
 import { listTrainedModels, predictModel, deleteTrainedModel, type TrainedModelSummary } from '@/lib/modelFunctions';
 import { Brain, Network, GraduationCap } from 'lucide-react';
+import { Spinner, Button } from '@heroui/react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { GraphsTab } from './GraphsTab';
 import { InferenceTab } from './inference/InferenceTab';
 import { LearnTab } from './LearnTab';
@@ -74,59 +77,56 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-semibold text-neutral-800">Scratch My AI</h1>
-          <button
-            onClick={() => navigate('/graph')}
-            className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            + New Graph
-          </button>
-        </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-[#faf9f5]">
+        <DashboardSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        
+        <main className="flex-1 overflow-auto p-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-between items-start mb-8 border-b border-[#e8e7e2] pb-6">
+              <div className="flex flex-col gap-1.5">
+                <h1 className="text-3xl font-semibold text-[#111] tracking-tight">
+                  {activeTab === 'graphs' && 'My Graphs'}
+                  {activeTab === 'inference' && 'Inference Models'}
+                  {activeTab === 'learn' && 'Learning ML'}
+                </h1>
+                <p className="text-[14px] text-[#666] font-medium">
+                  {activeTab === 'graphs' && 'Design, train, and manage your visual neural networks and graph architectures.'}
+                  {activeTab === 'inference' && 'Evaluate and run predictions using your previously trained machine learning models.'}
+                  {activeTab === 'learn' && 'Learn deep learning fundamentals through step-by-step, interactive block tutorials.'}
+                </p>
+              </div>
+              {activeTab === 'graphs' && (
+                <Button
+                  variant="primary"
+                  onPress={() => navigate('/graph')}
+                >
+                  + New Graph
+                </Button>
+              )}
+            </div>
 
-        {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-stone-200">
-            <button 
-                onClick={() => setActiveTab('graphs')}
-                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'graphs' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
-            >
-                <Network size={18} />
-                My Graphs
-            </button>
-            <button
-                onClick={() => setActiveTab('inference')}
-                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'inference' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
-            >
-                <Brain size={18} />
-                Inference Models
-            </button>
-            <button
-                onClick={() => setActiveTab('learn')}
-                className={`flex items-center gap-2 px-4 py-3 -mb-px font-medium border-b-2 transition-colors ${activeTab === 'learn' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}`}
-            >
-                <GraduationCap size={18} />
-                Learning ML
-            </button>
-        </div>
-
-        {activeTab === 'learn' ? (
-          <LearnTab />
-        ) : loading ? (
-          <p className="text-neutral-500">Loading your AI projects…</p>
-        ) : activeTab === 'graphs' ? (
-          <GraphsTab graphs={graphs} onDeleteGraph={handleDeleteGraph} />
-        ) : (
-          <InferenceTab
-            trainedModels={trainedModels}
-            selectedModel={selectedModel}
-            onSelectModel={setSelectedModel}
-            onDeleteModel={handleDeleteModel}
-            onPredict={handlePredict}
-          />
-        )}
+            {activeTab === 'learn' ? (
+              <LearnTab />
+            ) : loading ? (
+              <div className="flex items-center gap-2 text-[13px] text-[#555] bg-white border border-[#e8e8e8] w-fit px-4 py-2 rounded-lg">
+                <Spinner size="sm" className="text-[#999]" />
+                <span>Loading your AI projects…</span>
+              </div>
+            ) : activeTab === 'graphs' ? (
+              <GraphsTab graphs={graphs} onDeleteGraph={handleDeleteGraph} />
+            ) : (
+              <InferenceTab
+                trainedModels={trainedModels}
+                selectedModel={selectedModel}
+                onSelectModel={setSelectedModel}
+                onDeleteModel={handleDeleteModel}
+                onPredict={handlePredict}
+              />
+            )}
+          </div>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
