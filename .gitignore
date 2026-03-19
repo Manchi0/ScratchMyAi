@@ -62,3 +62,4 @@ logs/
 coverage/
 .coverage
 htmlcov/
+frontend/.heroui-docs/

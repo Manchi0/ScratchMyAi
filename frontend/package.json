@@ -13,15 +13,20 @@
     "@ai-sdk/anthropic": "^3.0.47",
     "@ai-sdk/openai": "^3.0.33",
     "@ai-sdk/react": "^3.0.102",
+    "@heroui/react": "3.0.0-rc.1",
+    "@heroui/styles": "3.0.0-rc.1",
     "@supabase/supabase-js": "^2.99.0",
     "@xyflow/react": "^12.10.1",
     "ai": "^6.0.100",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cobe": "^2.0.0",
     "d3-force": "^3.0.0",
-    "framer-motion": "^12.34.3",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.575.0",
+    "motion": "^12.38.0",
     "nanoid": "^5.1.6",
+    "radix-ui": "^1.4.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "^10.1.0",
@@ -35,7 +40,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/d3-force": "^3.0.10",
     "@types/node": "^22",
     "@types/react": "^19",
@@ -44,9 +49,13 @@
     "autoprefixer": "^10.4.27",
     "eslint": "^9",
     "postcss": "^8.5.8",
+    "shadcn": "^4.0.8",
     "sharp": "^0.34.5",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5",
     "vite": "^6.0.0"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.2"
   }
 }

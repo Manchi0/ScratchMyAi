@@ -9,15 +9,16 @@ import {
   SelectionMode,
   useReactFlow,
   ReactFlowProvider,
+  useViewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Hand, MousePointer2 } from "lucide-react";
+import { Hand, MousePointer2, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Dock, DockIcon } from "@/components/ui/dock";
 
 import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { Sidebar } from "./Sidebar";
-import { AIAgentSidebar } from "./AIAgentSidebar";
-import { LessonSidebar } from "@/pages/learn/LessonSidebar";
+import { RightSidebar } from "./RightSidebar";
 import { mlpIntro } from "@/pages/learn/courses/mlpIntro";
 import { cnnMnist } from "@/pages/learn/courses/cnnMnist";
 import { whatIsRnn } from "@/pages/learn/courses/whatIsRnn";
@@ -28,6 +29,7 @@ import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 import { loadGraph } from "@/lib/graphFunctions";
+import { ContextMenu, type ContextMenuData } from "./ContextMenu";
 
 import type { Course } from "@/pages/learn/courses/mlpIntro";
 
@@ -47,12 +49,74 @@ const edgeTypes = {
   wire: WireEdge,
 };
 
+function CanvasDock({
+  interactionMode,
+  setInteractionMode,
+}: {
+  interactionMode: 'pan' | 'select';
+  setInteractionMode: (mode: 'pan' | 'select') => void;
+}) {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoom } = useViewport();
+
+  const handleZoomIn = () => zoomIn({ duration: 200 });
+  const handleZoomOut = () => zoomOut({ duration: 200 });
+  const handleFitView = () => fitView({ duration: 400, padding: 0.1 });
+
+  const displayZoom = Math.round(zoom * 100);
+
+  return (
+    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex">
+      <Dock direction="middle" className="bg-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.06)] border border-[#eeeeee] px-2 h-14 rounded-full items-center gap-1">
+        <DockIcon 
+          onClick={() => setInteractionMode('select')}
+          className="cursor-pointer transition-colors text-[#78716c] hover:text-[#1c1917]"
+        >
+          <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${interactionMode === 'select' ? 'bg-[#f1f1f1] text-[#1c1917]' : ''}`}>
+            <MousePointer2 className="w-5 h-5" strokeWidth={2} />
+          </div>
+        </DockIcon>
+        
+        <DockIcon 
+          onClick={() => setInteractionMode('pan')}
+          className="cursor-pointer transition-colors text-[#78716c] hover:text-[#1c1917]"
+        >
+          <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${interactionMode === 'pan' ? 'bg-[#f1f1f1] text-[#1c1917]' : ''}`}>
+             <Hand className="w-5 h-5" strokeWidth={2} />
+          </div>
+        </DockIcon>
+
+        <div className="w-[1px] h-6 bg-[#e5e5e5] mx-1" />
+
+        <DockIcon onClick={handleZoomOut} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors">
+          <ZoomOut className="w-5 h-5" strokeWidth={2} />
+        </DockIcon>
+
+        <div className="w-12 text-center text-[13px] font-semibold text-[#8a8a8a] select-none">
+          {displayZoom}%
+        </div>
+
+        <DockIcon onClick={handleZoomIn} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors">
+          <ZoomIn className="w-5 h-5" strokeWidth={2} />
+        </DockIcon>
+
+        <div className="w-[1px] h-6 bg-[#e5e5e5] mx-1" />
+
+        <DockIcon onClick={handleFitView} className="cursor-pointer text-[#78716c] hover:text-[#1c1917] transition-colors" title="Fit to screen">
+          <Maximize className="w-[18px] h-[18px]" strokeWidth={2} />
+        </DockIcon>
+      </Dock>
+    </div>
+  );
+}
+
 function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
   const { id } = useParams<{ id?: string }>();
   const lessonCourse = lessonCourseId ? LESSON_COURSES[lessonCourseId] : undefined;
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [interactionMode, setInteractionMode] = useState<'pan' | 'select'>('select');
   const { screenToFlowPosition, fitView } = useReactFlow();
+  const [menu, setMenu] = useState<ContextMenuData | null>(null);
 
   // References for middle mouse button temporary pan mode
   const interactionModeRef = useRef(interactionMode);
@@ -159,7 +223,7 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
 
   return (
     <>
-      <div className="flex flex-col h-screen w-screen bg-[#f8f7f4] text-[#1c1917] overflow-hidden">
+      <div className="flex flex-col h-screen w-screen bg-[#fcfcfc] text-[#1c1917] overflow-hidden">
         <TitleBar />
 
         <div className="flex flex-1 overflow-hidden">
@@ -178,50 +242,46 @@ function AppShellContent({ lessonCourseId }: { lessonCourseId?: string }) {
               onConnect={onConnect}
               onDragOver={onDragOver}
               onDrop={onDrop}
+              onNodeContextMenu={(e, node) => {
+                e.preventDefault();
+                setMenu({ id: node.id, top: e.clientY, left: e.clientX, type: 'node' });
+              }}
+              onEdgeContextMenu={(e, edge) => {
+                e.preventDefault();
+                setMenu({ id: edge.id, top: e.clientY, left: e.clientX, type: 'edge' });
+              }}
+              onPaneContextMenu={(e) => {
+                e.preventDefault();
+                setMenu({ top: e.clientY, left: e.clientX, type: 'pane' });
+              }}
+              onPaneClick={() => setMenu(null)}
+              onNodeDragStart={() => setMenu(null)}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               minZoom={0.1}
               panOnDrag={interactionMode === 'pan' ? [0, 1] : [1]}
               selectionOnDrag={interactionMode === 'select'}
               panOnScroll={true}
               selectionMode={SelectionMode.Partial}
-              deleteKeyCode="Delete"
+              selectNodesOnDrag={true}
+              deleteKeyCode={["Backspace", "Delete"]}
               proOptions={{ hideAttribution: true }}
-              style={{ backgroundColor: "#f8f7f4" }}
+              style={{ backgroundColor: "#fcfcfc" }}
               fitView
               fitViewOptions={{ padding: 0.2 }}
             >
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d4d4d4" />
-              <Controls showInteractive={false} />
-
-              {/* Interaction Mode Toolbar */}
-              <div className="absolute bottom-24 left-3.5 z-10 flex flex-col bg-[#fefefe] shadow-[0_0_2px_1px_rgba(0,0,0,0.08)] rounded-[7px] overflow-hidden h-11.5 w-6">
-                <button
-                  onClick={() => setInteractionMode('pan')}
-                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] border-b-0 transition-colors ${interactionMode === 'pan'
-                    ? 'bg-stone-100 text-stone-900'
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
-                    }`}
-                  title="Pan Mode"
-                >
-                  <Hand size={14} />
-                </button>
-                <button
-                  onClick={() => setInteractionMode('select')}
-                  className={`w-[26px] h-[26px] flex items-center justify-center border border-[#eee] transition-colors ${interactionMode === 'select'
-                    ? 'bg-stone-100 text-stone-900'
-                    : 'text-stone-500 hover:text-stone-700 hover:bg-stone-50'
-                    }`}
-                  title="Select Mode"
-                >
-                  <MousePointer2 size={14} />
-                </button>
-              </div>
+              {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+              <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="#d4d4d4" />
+              
+              <CanvasDock 
+                interactionMode={interactionMode} 
+                setInteractionMode={setInteractionMode} 
+              />
 
               {/* <MiniMap nodeColor="#d4d4d4" maskColor="rgba(0,0,0,0.08)" /> */}
             </ReactFlow>
           </div>
 
-          {lessonCourse ? <LessonSidebar course={lessonCourse} /> : <AIAgentSidebar />}
+          {lessonCourse ? <RightSidebar course={lessonCourse} /> : <RightSidebar />}
         </div>
 
         <StatusBar />

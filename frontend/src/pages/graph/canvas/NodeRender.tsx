@@ -3,6 +3,14 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { getBlockDefinition } from '@/blocks/BlockRegistry';
 import { useStore } from '@/store/useStore';
 import { Upload } from 'lucide-react';
+import { Input, Select, ListBox, ListBoxItem } from '@heroui/react';
+
+const categoryLabels: Record<string, string> = {
+  input: 'DATA SOURCE',
+  output: 'OUTPUT',
+  layer: 'LAYER',
+  activation: 'ACTIVATION',
+};
 
 export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
   const blockType = data.blockType as string;
@@ -19,7 +27,7 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
     );
   }
 
-  const { title, color, icon: Icon, inputs, outputs, params: paramDefs } = definition;
+  const { title, color, icon: Icon, inputs, outputs, params: paramDefs, category } = definition;
 
   const handleParamChange = (key: string, value: any) => {
     updateNodeData(id, {
@@ -30,23 +38,25 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
     });
   };
 
-  // ... (renderInput logic remains the same)
-
   const renderInput = (key: string, currentValue: any) => {
     const def = paramDefs[key];
     if (!def) return null;
 
     if (def.type === 'int' || def.type === 'float') {
       return (
-        <input
+        <Input
           type="number"
-          className="nodrag w-16 text-right text-xs border rounded px-1 py-0.5 appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-moz-appearance:textfield]"
-          value={currentValue ?? def.default}
+          variant="secondary"
+          className="nodrag h-6 min-w-[40px] max-w-[120px] min-h-6 min-h-0 py-0 rounded-md border border-[#e8e8e8] bg-[#fafafa] px-1.5 shadow-none focus-within:border-[#111] transition-colors text-left text-[11px] text-[#333] font-medium appearance-none"
+          style={{ width: `calc(${String(currentValue ?? def.default).length}ch + 36px)` }}
+          value={String(currentValue ?? def.default)}
           min={def.min}
           max={def.max}
           step={def.type === 'int' ? 1 : 0.01}
           onChange={(e) => {
-            const val = def.type === 'int' ? parseInt(e.target.value, 10) : parseFloat(e.target.value);
+            const ev = e as any;
+            if (!ev || !ev.target) return;
+            const val = def.type === 'int' ? parseInt(ev.target.value, 10) : parseFloat(ev.target.value);
             if (!isNaN(val)) handleParamChange(key, val);
           }}
         />
@@ -57,8 +67,9 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
       return (
         <input
           type="checkbox"
-          className="nodrag rounded border-gray-300 text-primary focus:ring-primary h-3 w-3"
-          checked={currentValue ?? def.default}
+          className="nodrag rounded border border-[#e8e8e8] outline-none text-[#111] bg-[#fafafa] h-3 w-3 cursor-pointer"
+          style={{ accentColor: color }}
+          checked={Boolean(currentValue ?? def.default)}
           onChange={(e) => handleParamChange(key, e.target.checked)}
         />
       );
@@ -66,23 +77,38 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
 
     if (def.type === 'select') {
       return (
-        <select
-          className="nodrag text-xs border rounded px-1 py-0.5 bg-white max-w-[80px]"
-          value={currentValue ?? def.default}
-          onChange={(e) => handleParamChange(key, e.target.value)}
+        <Select
+          className="nodrag !w-23"
+          selectedKey={String(currentValue ?? def.default)}
+          onSelectionChange={(selected) => handleParamChange(key, String(selected))}
         >
-          {def.options.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+          <Select.Trigger className="!h-6 !min-h-0 !py-0 !w-23 border border-[#e8e8e8] rounded-md px-1.5 bg-[#fafafa] flex items-center justify-between outline-none focus-visible:border-[#111] shadow-none">
+            <Select.Value className="!text-[11px] text-[#333] font-medium truncate flex-1 text-right" />
+          </Select.Trigger>
+          <Select.Popover className="min-w-[120px]">
+            <ListBox>
+              {def.options.map((opt: any) => (
+                <ListBoxItem key={opt.value} id={opt.value} textValue={opt.label}>
+                  <span className="text-[11px]">{opt.label}</span>
+                </ListBoxItem>
+              ))}
+            </ListBox>
+          </Select.Popover>
+        </Select>
       );
     }
 
     if (def.type === 'file') {
       return (
-        <div className="flex items-center gap-2 max-w-[120px]">
-          <label className="nodrag cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 p-1 rounded border border-gray-200 transition-colors shrink-0">
-            <Upload size={14} />
+        <div className="flex items-center gap-1.5 w-24 justify-end">
+          <span
+            className="text-[10px] text-[#999] truncate flex-1 text-right min-w-0"
+            title={currentValue || 'Select file'}
+          >
+            {currentValue || 'none'}
+          </span>
+          <label className="nodrag cursor-pointer bg-[#f5f5f5] hover:bg-[#eee] text-[#555] p-1 rounded-md border border-[#e0e0e0] transition-colors shrink-0">
+            <Upload size={12} />
             <input
               type="file"
               accept={def.accept}
@@ -93,12 +119,6 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
               }}
             />
           </label>
-          <span
-            className="text-[10px] text-gray-500 truncate"
-            title={currentValue || 'Select file'}
-          >
-            {currentValue || 'none'}
-          </span>
         </div>
       );
     }
@@ -106,60 +126,81 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
     // Fallback string rendering
     const fallbackDef = def as any;
     return (
-      <input
+      <Input
         type="text"
-        className="nodrag w-20 text-xs border rounded px-1 py-0.5"
-        value={currentValue ?? fallbackDef.default}
-        onChange={(e) => handleParamChange(key, e.target.value)}
+        variant="secondary"
+        className="nodrag w-20 h-6 min-h-6 min-h-0 py-0 rounded-md border border-[#e8e8e8] bg-[#fafafa] px-1.5 shadow-none focus-within:border-[#111] transition-colors text-[11px] text-[#333] font-medium"
+        value={String(currentValue ?? fallbackDef.default)}
+        onChange={(e) => {
+            const ev = e as any;
+            if (!ev || !ev.target) return;
+            handleParamChange(key, ev.target.value);
+        }}
       />
     );
   };
 
   return (
     <div
-      className={`relative min-w-[150px] bg-white rounded-lg shadow-md border-2 transition-colors ${selected ? 'border-primary' : 'border-transparent'
-        }`}
-      style={{ borderColor: selected ? color : '#e5e7eb' }} // Fallback to gray-200 if not selected
+      className={`relative min-w-[180px] max-w-[240px] bg-white rounded-xl border-[2px] transition-all duration-200 ${
+        selected ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
+      }`}
+      style={{ 
+        borderColor: color,
+        boxShadow: selected ? `0 0 0 8px ${color}33, 0 4px 20px rgba(0,0,0,0.15)` : undefined
+      }}
     >
-      {/* Header */}
+      {/* Top color accent bar */}
       <div
-        className="flex items-center justify-between px-3 py-2 rounded-t-lg border-b border-gray-100"
-        style={{ backgroundColor: `${color}15` }} // 15% opacity tint
-      >
+        className="h-2.5 rounded-t-[10px] w-full bg-opacity-90"
+        style={{ backgroundColor: color }}
+      />
+
+      {/* Header area */}
+      <div className="px-3.5 pt-2 pb-1.5">
+        {/* Category label */}
+        <p
+          className="text-[9px] font-semibold uppercase tracking-widest mb-0.5"
+          style={{ color: color }}
+        >
+          {categoryLabels[category] || category.toUpperCase()}
+        </p>
+
+        {/* Block title */}
         <div className="flex items-center gap-2">
-          <div
-            className="flex items-center justify-center w-6 h-6 rounded-full shadow-sm"
-            style={{ backgroundColor: color }}
-          >
-            {Icon && <Icon size={14} className="text-white" />}
-          </div>
-          <span className="font-semibold text-sm text-gray-800">{title}</span>
+          <span className="text-sm font-bold text-[#111]">{title}</span>
         </div>
       </div>
 
-      {/* Body / Params */}
-      {Object.entries(paramDefs || {}).length > 0 ? (
-        <div className="p-3 bg-white rounded-b-lg">
-          <div className="flex flex-col gap-2">
-            {Object.entries(paramDefs).map(([key, def]) => (
-              <div key={key} className="flex justify-between items-center text-xs gap-3">
-                <span className="text-gray-600 font-medium" title={def.label || key}>
-                  {def.label || key}
-                </span>
-                {renderInput(key, params[key])}
-              </div>
-            ))}
+      {/* Divider + Params */}
+      {Object.entries(paramDefs || {}).length > 0 && (
+        <>
+          <div className="mx-3 border-t border-[#eee]" />
+          <div className="px-3.5 py-2">
+            <div className="flex flex-col gap-1.5">
+              {Object.entries(paramDefs).map(([key, def]) => {
+                if (key === 'file' && 'dataset_source' in paramDefs) {
+                  const source = params['dataset_source'] ?? paramDefs['dataset_source'].default;
+                  if (source !== 'custom') return null;
+                }
+
+                return (
+                  <div key={key} className="flex justify-between items-center text-xs gap-2">
+                    <span className="text-[11px] text-[#777] font-medium truncate" title={def.label || key}>
+                      {def.label || key}
+                    </span>
+                    {renderInput(key, params[key])}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="px-3 py-1 bg-white rounded-b-lg">
-        </div>
+        </>
       )}
 
       {/* Input Handles */}
       {inputs.map((input, index) => {
-        // Distribute handles along the left edge
-        const topOffset = `${((index + 1) / (inputs.length + 1)) * 100}%`;
+        const topPercent = ((index + 1) / (inputs.length + 1)) * 100;
         return (
           <Handle
             key={`in-${input.id}`}
@@ -167,14 +208,13 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
             position={Position.Left}
             id={input.id}
             style={{
-              top: topOffset,
-              background: '#fff',
-              border: '2px solid',
-              borderColor: color,
+              top: `${topPercent}%`,
+              background: color,
+              border: '2px solid white',
               width: '10px',
-              height: '10px'
+              height: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
             }}
-            // Optional: tooltip for 'input.label'
             title={input.label}
           />
         );
@@ -182,8 +222,7 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
 
       {/* Output Handles */}
       {outputs.map((output, index) => {
-        // Distribute handles along the right edge
-        const topOffset = `${((index + 1) / (outputs.length + 1)) * 100}%`;
+        const topPercent = ((index + 1) / (outputs.length + 1)) * 100;
         return (
           <Handle
             key={`out-${output.id}`}
@@ -191,12 +230,12 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
             position={Position.Right}
             id={output.id}
             style={{
-              top: topOffset,
-              background: '#fff',
-              border: '2px solid',
-              borderColor: color,
+              top: `${topPercent}%`,
+              background: color,
+              border: '2px solid white',
               width: '10px',
-              height: '10px'
+              height: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
             }}
             title={output.label}
           />

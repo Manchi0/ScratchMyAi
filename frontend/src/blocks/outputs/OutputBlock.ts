@@ -1,15 +1,15 @@
 import { BlockDefinition, BlockPort } from '../BlockDefinition';
 import { BlockParameter } from '../BlockParameter';
-import { Flag } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 
 export class OutputBlock extends BlockDefinition {
   type = 'output';
   category = 'output' as const;
-  title = 'Output';
-  icon = Flag;
+  title = 'Model';
+  icon = Cpu;
   
   params: Record<string, BlockParameter> = {
-    name: { type: 'string', default: 'predictions', label: 'Layer Name' }
+    name: { type: 'string', default: 'untitled', label: 'Name' }
   };
   
   inputs: BlockPort[] = [{ id: 'in', label: 'Input', type: 'tensor' }];

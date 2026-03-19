@@ -21,7 +21,7 @@ export class DatasetBlock extends BlockDefinition {
     },
     batch_size: { type: 'int', default: 32, min: 1, label: 'Batch Size' },
     shuffle: { type: 'boolean', default: true, label: 'Shuffle' },
-    file: { type: 'file', default: null, accept: '.csv,.zip', label: 'Upload Data' }
+    file: { type: 'file', default: null, accept: '.csv,.zip', label: 'Upload' }
   };
   inputs: BlockPort[] = [];
   outputs: BlockPort[] = [{ id: 'out', label: 'Data', type: 'dataset' }];
