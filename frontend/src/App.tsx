@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from '@/pages/auth/LoginPage';
+import UpdatePasswordPage from '@/pages/auth/UpdatePasswordPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import { ReactFlowProvider } from '@xyflow/react';
 import { AppShell, LessonShell } from '@/pages/graph/layout/AppShell';
@@ -61,6 +62,10 @@ const App = () => {
                 <LoginPage />
               </PublicRoute>
             }
+          />
+          <Route
+            path="/update-password"
+            element={<UpdatePasswordPage />}
           />
           <Route
             path="/dashboard"

@@ -15,8 +15,8 @@ export function InferenceModelCard({ model, isSelected, onSelect, onDelete }: In
       onClick={() => onSelect(model)}
       className={`relative group p-4 rounded-xl cursor-pointer transition-all border ${
         isSelected 
-          ? 'border-indigo-500 bg-white shadow-md ring-1 ring-indigo-500' 
-          : 'border-stone-200 bg-white hover:border-indigo-300 hover:shadow-sm'
+          ? 'border-[#111] bg-white shadow-md ring-1 ring-[#111]' 
+          : 'border-stone-200 bg-white hover:border-[#aaa] hover:shadow-sm'
       }`}
     >
       <Button

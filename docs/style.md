@@ -1,6 +1,6 @@
-# ScratchMyAi Design System
+# AxonX Design System
 
-This document outlines the core styling conventions, variables, and components used in the **ScratchMyAi** frontend. Future development must align with these specifications to maintain the intended aesthetic.
+This document outlines the core styling conventions, variables, and components used in the **AxonX** frontend. Future development must align with these specifications to maintain the intended aesthetic.
 
 ## Design Philosophy
 The application embodies a **warm, library-inspired, minimalist aesthetic**. It uses high-contrast text on soft off-white and warm gray backgrounds. The UI leverages subtle borders, slight background color shifts on hover, and soft drop shadows to create an elevated but clean environment. The design is deliberately typography-driven, utilizing distinct font families (Serif for titles, Sans for UI, Mono for code) to distinguish different types of content clearly.

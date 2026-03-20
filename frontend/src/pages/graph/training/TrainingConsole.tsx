@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { Button } from '@heroui/react';
 
 interface TrainingConsoleProps {
   isOpen: boolean;
@@ -173,8 +174,8 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
           <div className="flex items-center gap-3">
             {status === 'training' && (
               <>
-                <Loader2 size={18} className="animate-spin text-indigo-600" />
-                <span className="text-sm font-semibold text-indigo-700">Training in progress...</span>
+                <Loader2 size={18} className="animate-spin text-[#111]" />
+                <span className="text-sm font-semibold text-[#111]">Training in progress...</span>
               </>
             )}
             {status === 'success' && (
@@ -191,17 +192,13 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
             )}
           </div>
           
-          <button
-            onClick={handlePrimaryAction}
-            disabled={status === 'training'}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm ${
-              status === 'training' 
-                ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
+          <Button
+            onPress={handlePrimaryAction}
+            isDisabled={status === 'training'}
+            className={status === 'training' ? 'bg-stone-200 text-stone-400 opacity-50' : 'bg-[#1a1a1a] text-white shadow-sm font-medium'}
           >
             {status === 'success' ? 'Go Test Model' : 'Close'}
-          </button>
+          </Button>
         </div>
 
       </div>

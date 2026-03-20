@@ -91,7 +91,7 @@ By the end you'll have a working graph that you can actually **train and evaluat
 ---
 
 **What you'll build:**
-\`Dataset → Flatten → Linear → ReLU → Linear → Softmax → Output\`
+\`Dataset → Flatten → Linear → ReLU → Linear → Output\`
 
 **What you'll learn:**
 - What each block does and *why* it's there
@@ -113,7 +113,6 @@ Here's a quick preview of every block in our MLP. Don't worry — we'll add them
 | **Flatten** | Layer | Reshapes 28×28 image → 784 numbers |
 | **Linear** | Layer | Learns weighted connections (×2) |
 | **ReLU** | Activation | Adds non-linearity |
-| **Softmax** | Activation | Converts scores to probabilities |
 | **Output** | Output | Marks the end of the pipeline |
 
 The left sidebar has all of these — grouped into *Input*, *Layer*, *Activation*, and *Output* categories.`,
@@ -294,42 +293,16 @@ MNIST has 10 classes (digits 0–9). The network will produce a score for each c
     },
 
     {
-      id: 'add-softmax',
-      title: 'Step 6 — Softmax',
-      type: 'add-block',
-      blockType: 'softmax',
-      blockLabel: 'Softmax',
-      content: `# Step 6: Softmax Activation
-
-**Find it in:** Activation category
-
-Drag a **Softmax** block and connect **Linear** → **Softmax**.
-
----
-
-**What it does:**
-Softmax turns the 10 raw scores into **probabilities** that sum to 1.0.
-
-Example: \`[2.1, 0.3, -1.2, ...]\` → \`[0.72, 0.11, 0.02, ...]\`
-
-**Why it's needed:**
-Raw logits are hard to interpret. With Softmax, you can say "the model is 72% confident this is a 0". It also works well with cross-entropy loss during training.
-
-**A note on Dim:**
-Set **dim** to \`1\` — this tells Softmax to apply across the class dimension (the 10 scores), not across the batch.`,
-    },
-
-    {
       id: 'add-output',
-      title: 'Step 7 — Output Block',
+      title: 'Step 6 — Output Block',
       type: 'add-block',
       blockType: 'output',
       blockLabel: 'Output',
-      content: `# Step 7: Output Block
+      content: `# Step 6: Output Block
 
 **Find it in:** Output category
 
-Drag an **Output** block and connect **Softmax** → **Output**.
+Drag an **Output** block and connect the second **Linear** → **Output**.
 
 ---
 
@@ -339,7 +312,7 @@ The Output block marks the end of the forward pass. It tells the training loop *
 **You're nearly done!**
 Once this is connected, your full pipeline is:
 
-\`Dataset → Flatten → Linear(784,128) → ReLU → Linear(128,10) → Softmax → Output\`
+\`Dataset → Flatten → Linear(784,128) → ReLU → Linear(128,10) → Output\`
 
 Run the final check to confirm everything is connected correctly — then hit **Save** and **Train**!`,
     },
@@ -352,16 +325,16 @@ Run the final check to confirm everything is connected correctly — then hit **
 
 Your complete graph should be:
 
-\`Dataset → Flatten → Linear → ReLU → Linear → Softmax → Output\`
+\`Dataset → Flatten → Linear → ReLU → Linear → Output\`
 
 Click **Check My Graph** to validate the full pipeline!`,
       hints: [
-        "Make sure all 7 blocks are on the canvas and connected in sequence.",
+        "Make sure all 6 blocks are on the canvas and connected in sequence.",
         "Check for broken connections — every block should have both an incoming and outgoing connection (except Dataset at the start and Output at the end).",
-        "The second Linear layer should connect to Softmax, and Softmax should connect to Output.",
+        "The second Linear layer should connect directly to Output.",
       ],
       check: (nodes, edges, hintLevel) => {
-        const required = ['dataset', 'flatten', 'linear', 'relu', 'softmax', 'output'];
+        const required = ['dataset', 'flatten', 'linear', 'relu', 'output'];
         for (const bt of required) {
           if (nodesByType(nodes, bt).length === 0) {
             return { passed: false, message: `Missing a ${bt.charAt(0).toUpperCase() + bt.slice(1)} block.`, hint: `Add a ${bt} block to your canvas.` };
@@ -376,8 +349,7 @@ Click **Check My Graph** to validate the full pipeline!`,
           ['flatten', 'linear', 'Flatten → Linear'],
           ['linear', 'relu', 'Linear → ReLU'],
           ['relu', 'linear', 'ReLU → Linear (second)'],
-          ['linear', 'softmax', 'Linear → Softmax'],
-          ['softmax', 'output', 'Softmax → Output'],
+          ['linear', 'output', 'Linear → Output'],
         ];
 
         for (const [src, tgt, label] of checks) {

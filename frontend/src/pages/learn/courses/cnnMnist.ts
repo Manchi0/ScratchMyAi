@@ -57,7 +57,7 @@ The same CNN that learned to spot an edge in the top-left corner automatically a
 
 **What you'll build:**
 
-\`Dataset → Conv2d → ReLU → AvgPool2d → Conv2d → ReLU → AvgPool2d → Flatten → Linear → ReLU → Linear → Softmax → Output\`
+\`Dataset → Conv2d → ReLU → AvgPool2d → Conv2d → ReLU → AvgPool2d → Flatten → Linear → ReLU → Linear → Output\`
 
 **What you'll learn:**
 - How convolution filters detect spatial patterns
@@ -81,7 +81,6 @@ Two new blocks join the ones you already know from the MLP lesson.
 | **AvgPool2d** | Layer | New | Downsamples feature maps (×2) |
 | **Flatten** | Layer | — | Reshapes 3D tensor → 1D vector |
 | **Linear** | Layer | — | Fully-connected classifier (×2) |
-| **Softmax** | Activation | — | Converts scores to probabilities |
 | **Output** | Output | — | End of pipeline |
 
 Find **Conv2d** and **AvgPool2d** in the **Layer** category of the left sidebar.`,
@@ -383,41 +382,22 @@ Same as the MLP — 10 output logits, one per digit class.`,
     },
 
     {
-      id: 'add-softmax',
-      title: 'Step 12 — Softmax',
-      type: 'add-block',
-      blockType: 'softmax',
-      blockLabel: 'Softmax',
-      content: `# Step 12: Softmax
-
-**Find it in:** Activation category
-
-Drag a **Softmax** block and connect **Linear** → **Softmax**.
-
-Set **dim** to \`1\`.
-
----
-
-Converts the 10 raw logits to probabilities summing to 1.0. Same as in the MLP.`,
-    },
-
-    {
       id: 'add-output',
-      title: 'Step 13 — Output Block',
+      title: 'Step 12 — Output Block',
       type: 'add-block',
       blockType: 'output',
       blockLabel: 'Output',
-      content: `# Step 13: Output Block
+      content: `# Step 12: Output Block
 
 **Find it in:** Output category
 
-Drag an **Output** block and connect **Softmax** → **Output**.
+Drag an **Output** block and connect the second **Linear** → **Output**.
 
 ---
 
 **You're done!** The full CNN pipeline:
 
-\`Dataset → Conv2d(1,32,3,p=1) → ReLU → AvgPool2d(2,2) → Conv2d(32,64,3,p=1) → ReLU → AvgPool2d(2,2) → Flatten → Linear(3136,128) → ReLU → Linear(128,10) → Softmax → Output\`
+\`Dataset → Conv2d(1,32,3,p=1) → ReLU → AvgPool2d(2,2) → Conv2d(32,64,3,p=1) → ReLU → AvgPool2d(2,2) → Flatten → Linear(3136,128) → ReLU → Linear(128,10) → Output\`
 
 Run the final check, then **Save** and **Train**!
 
@@ -430,13 +410,13 @@ Run the final check, then **Save** and **Train**!
       type: 'check',
       content: `# Final Check — Full CNN Pipeline
 
-Verify that all 13 blocks are present and connected in the correct order.
+Verify that all 12 blocks are present and connected in the correct order.
 
 Click **Check My Graph**!`,
       hints: [
-        "Make sure all blocks are on the canvas: Dataset, Conv2d (×2), ReLU (×3), AvgPool2d (×2), Flatten, Linear (×2), Softmax, Output.",
+        "Make sure all blocks are on the canvas: Dataset, Conv2d (×2), ReLU (×3), AvgPool2d (×2), Flatten, Linear (×2), Output.",
         "Check all connections are drawn. No block should be floating disconnected.",
-        "The order should be: Dataset → Conv2d → ReLU → AvgPool2d → Conv2d → ReLU → AvgPool2d → Flatten → Linear → ReLU → Linear → Softmax → Output.",
+        "The order should be: Dataset → Conv2d → ReLU → AvgPool2d → Conv2d → ReLU → AvgPool2d → Flatten → Linear → ReLU → Linear → Output.",
       ],
       check: (nodes, edges, hintLevel) => {
         // Check required block counts
@@ -446,7 +426,6 @@ Click **Check My Graph**!`,
         if (nodesByType(nodes, 'avgpool2d').length < 2) return { passed: false, message: `Need 2 AvgPool2d blocks (have ${nodesByType(nodes, 'avgpool2d').length}).`, hint: 'Add a second AvgPool2d block after the second ReLU.' };
         if (nodesByType(nodes, 'flatten').length === 0) return { passed: false, message: 'Missing Flatten block.', hint: 'Add a Flatten block after the second AvgPool2d.' };
         if (nodesByType(nodes, 'linear').length < 2) return { passed: false, message: `Need 2 Linear blocks (have ${nodesByType(nodes, 'linear').length}).`, hint: 'Add a second Linear block with in_features=128, out_features=10.' };
-        if (nodesByType(nodes, 'softmax').length === 0) return { passed: false, message: 'Missing Softmax block.', hint: 'Add a Softmax block after the second Linear.' };
         if (nodesByType(nodes, 'output').length === 0) return { passed: false, message: 'Missing Output block.', hint: 'Add an Output block at the end.' };
 
         // Check connectivity chain
@@ -461,8 +440,7 @@ Click **Check My Graph**!`,
           ['flatten', 'linear'],
           ['linear', 'relu'],
           ['relu', 'linear'],
-          ['linear', 'softmax'],
-          ['softmax', 'output'],
+          ['linear', 'output'],
         ];
 
         for (const [src, tgt] of chain) {

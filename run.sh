@@ -16,7 +16,7 @@ cleanup() {
 # Trap Ctrl+C (SIGINT) and exit (SIGTERM)
 trap cleanup SIGINT SIGTERM
 
-echo "Starting ScratchMyAI..."
+echo "Starting AxonX..."
 
 # Start Backend
 echo "Starting Backend..."

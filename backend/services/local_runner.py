@@ -372,7 +372,7 @@ def resolve_connections(
         while curr and curr not in visited:
             visited.add(curr)
             current_path.append(curr)
-            # ScratchMyAI currently supports linear chains, so we just take the first successor
+            # AxonX currently supports linear chains, so we just take the first successor
             next_nodes = successors.get(curr, [])
             curr = next_nodes[0] if next_nodes else None
         paths.append(current_path)

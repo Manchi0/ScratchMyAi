@@ -1,14 +1,14 @@
-# ScratchMyAi Product Development Report (PDR)
+# AxonX Product Development Report (PDR)
 
 Date: March 7, 2026  
-Project: ScratchMyAi  
+Project: AxonX  
 Prepared from repository analysis
 
 ---
 
 ## 1) Executive Summary
 
-ScratchMyAi is a visual machine-learning platform that lets users build neural network architectures with drag-and-drop blocks, train models in real time, run inference, and learn through guided challenges and paper walkthroughs. The codebase shows a mature post-MVP product with complete end-to-end workflows already implemented.
+AxonX is a visual machine-learning platform that lets users build neural network architectures with drag-and-drop blocks, train models in real time, run inference, and learn through guided challenges and paper walkthroughs. The codebase shows a mature post-MVP product with complete end-to-end workflows already implemented.
 
 The strongest opportunities are now in reliability hardening, architectural maintainability, and operational consistency rather than major net-new feature development.
 
@@ -230,6 +230,6 @@ The strongest opportunities are now in reliability hardening, architectural main
 
 ## 12) Final Assessment
 
-ScratchMyAi is a strong post-MVP educational ML platform with meaningful differentiation in visual model construction and guided learning experiences. The next highest-leverage work is engineering maturity: reliability, consistency, maintainability, and operational readiness.
+AxonX is a strong post-MVP educational ML platform with meaningful differentiation in visual model construction and guided learning experiences. The next highest-leverage work is engineering maturity: reliability, consistency, maintainability, and operational readiness.
 
 With focused hardening and architecture cleanup, the product appears well-positioned to scale users, content, and model complexity without a full rewrite.

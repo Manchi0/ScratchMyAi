@@ -12,7 +12,7 @@ const categoryIcons: Record<string, ElementType> = {
 
 const categoryLabels: Record<string, string> = {
   input: 'Inputs',
-  output: 'Model',
+  output: 'Output',
   layer: 'Layers',
   activation: 'Activations',
 };

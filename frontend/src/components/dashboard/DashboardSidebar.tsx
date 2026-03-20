@@ -25,12 +25,9 @@ export function DashboardSidebar({ activeTab, setActiveTab }: DashboardSidebarPr
   return (
     <Sidebar className="border-r border-[#e8e8e8] bg-white">
       <SidebarHeader className="p-4 flex flex-row items-center gap-3 border-b border-[#e8e8e8]">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1a1a1a] text-white shadow-sm">
-          <Blocks size={16} />
-        </div>
         <div className="flex flex-col justify-center">
-          <span className="text-sm font-semibold text-[#111] tracking-tight leading-none">
-            ScratchMyAI
+          <span className="text-xl font-bold text-[#111] tracking-tight leading-none">
+            Axon<span className="text-3xl">X</span>
           </span>
         </div>
       </SidebarHeader>

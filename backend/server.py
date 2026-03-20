@@ -1,4 +1,4 @@
-print("SCRATCH_MY_AI_SERVER_STARTING", flush=True)
+print("AXONX_SERVER_STARTING", flush=True)
 import os
 from pathlib import Path
 
@@ -18,7 +18,7 @@ def _get_allowed_origins() -> list[str]:
     raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
     return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
-app = FastAPI(title="ScratchMyAI API", version="0.1.0")
+app = FastAPI(title="AxonX API", version="0.1.0")
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

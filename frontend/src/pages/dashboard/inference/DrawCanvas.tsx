@@ -347,9 +347,9 @@ export function DrawCanvas({ onPredict, dataset }: DrawCanvasProps) {
                 <span className={`truncate font-semibold ${classIndex === prediction ? 'text-[#111]' : 'text-[#888]'}`}>
                   {labels[classIndex] ?? classIndex}
                 </span>
-                <div className="h-2 overflow-hidden rounded-full bg-stone-200">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
                   <div
-                    className={`h-full rounded-full ${classIndex === prediction ? 'bg-[#111]' : 'bg-[#e5e5e5]'}`}
+                    className={`h-full rounded-full ${classIndex === prediction ? 'bg-[#111]' : 'bg-[#888]'}`}
                     style={{ width: `${Math.max(0, Math.min(100, probability * 100))}%` }}
                   />
                 </div>
