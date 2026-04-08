@@ -38,6 +38,54 @@ class TrainRequest(BaseModel):
     graph_json: dict[str, Any]
 
 
+def _extract_output_model_name(graph_payload: dict[str, Any], fallback: str | None = None) -> str:
+    """Pick a model name from the output block params, falling back if absent."""
+    default_name = (fallback or "Untitled Model").strip() or "Untitled Model"
+
+    # Serialized backend shape: { layers: [{ type: "output", name: "..." }] }
+    for layer in graph_payload.get("layers") or []:
+        if str(layer.get("type") or "").lower() != "output":
+            continue
+        raw_name = str(layer.get("name") or "").strip()
+        if raw_name:
+            return raw_name
+
+    # Canvas shape: { nodes: [{ data: { blockType: "output", params: { name: "..." } } }] }
+    for node in graph_payload.get("nodes") or []:
+        data = node.get("data") or {}
+        block_type = str(data.get("blockType") or node.get("type") or "").lower()
+        if block_type != "output":
+            continue
+        params = data.get("params") or {}
+        raw_name = str(params.get("name") or node.get("name") or "").strip()
+        if raw_name:
+            return raw_name
+
+    return default_name
+
+
+def _next_available_model_name(user_id: str, base_name: str) -> str:
+    """Return a unique model name by appending 1, 2, 3... when needed."""
+    normalized_base = (base_name or "Untitled Model").strip() or "Untitled Model"
+    supabase = get_supabase()
+    resp = supabase.table("trained_models").select("name").eq("user_id", user_id).execute()
+    existing_names = {
+        str(row.get("name") or "").strip().lower()
+        for row in (resp.data or [])
+        if str(row.get("name") or "").strip()
+    }
+
+    if normalized_base.lower() not in existing_names:
+        return normalized_base
+
+    n = 1
+    while True:
+        candidate = f"{normalized_base} {n}"
+        if candidate.lower() not in existing_names:
+            return candidate
+        n += 1
+
+
 def _create_artifact_upload_contract(user_id: str) -> tuple[str, str]:
     file_path = f"{user_id}/{uuid.uuid4().hex[:8]}.pt"
     supabase = get_supabase()
@@ -54,6 +102,8 @@ def training_stream_generator(request: TrainRequest, user_id: str):
     graph_payload = dict(request.graph_json or {})
     if not graph_payload.get("dataset") and request.dataset:
         graph_payload["dataset"] = request.dataset
+
+    base_model_name = _extract_output_model_name(graph_payload, fallback=request.name)
 
     selected_dataset = graph_payload.get("dataset") or request.dataset
     try:
@@ -209,13 +259,14 @@ def training_stream_generator(request: TrainRequest, user_id: str):
         yield f"data: {json.dumps({'type': 'log', 'message': 'Training complete! Saving model to registry...'})}\n\n"
         try:
             supabase = get_supabase()
+            model_name = _next_available_model_name(user_id, base_model_name)
             training_time_seconds = round(time.perf_counter() - training_started_at, 3)
             configured_epochs = graph_payload.get("training_config", {}).get("epochs")
             persisted_epochs = final_epochs if final_epochs is not None else configured_epochs
 
             record = {
                 "user_id": user_id,
-                "name": request.name,
+                "name": model_name,
                 "dataset": selected_dataset,
                 "graph_json": graph_payload,
                 "weights_path": file_path,

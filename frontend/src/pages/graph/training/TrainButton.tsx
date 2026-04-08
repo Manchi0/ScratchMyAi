@@ -25,7 +25,6 @@ interface TrainButtonProps {
   trainingConfig: TrainingConfig;
   setTrainingConfig: (config: Partial<TrainingConfig>) => void;
   onTrain: () => void;
-  onExport: () => void;
   validation: ValidationSummary;
 }
 
@@ -35,7 +34,6 @@ export function TrainButton({
   trainingConfig,
   setTrainingConfig,
   onTrain,
-  onExport,
   validation,
 }: TrainButtonProps) {
   const hardErrors = validation.structuralIssues.filter((i) => i.severity === 'error');
@@ -185,9 +183,6 @@ export function TrainButton({
             <div className="flex gap-2">
               <Button onPress={handleStartTraining} variant="primary" fullWidth>
                 Start Training
-              </Button>
-              <Button onPress={onExport} variant="outline" fullWidth>
-                Export JSON
               </Button>
             </div>
           </div>

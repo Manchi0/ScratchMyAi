@@ -112,14 +112,12 @@ export function Sidebar() {
               return (
                 <Accordion.Item key={category} id={category}>
                   <Accordion.Heading>
-                    <Accordion.Trigger className="flex items-center justify-between w-full px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest hover:bg-[#fafafa] transition-colors cursor-pointer">
+                    <Accordion.Trigger className="group flex items-center justify-between w-full px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest hover:bg-[#fafafa] transition-colors cursor-pointer">
                       <span className="flex items-center gap-1.5" style={{ color: categoryColors[category] }}>
                         {(() => { const CatIcon = categoryIcons[category]; return CatIcon ? <CatIcon size={12} /> : null; })()}
                         {categoryLabels[category]}
                       </span>
-                      <Accordion.Indicator>
-                        <ChevronRight size={12} className="transition-transform duration-200" />
-                      </Accordion.Indicator>
+                      <ChevronRight size={12} className="transition-transform duration-200 group-aria-expanded:rotate-90" />
                     </Accordion.Trigger>
                   </Accordion.Heading>
                   <Accordion.Panel>

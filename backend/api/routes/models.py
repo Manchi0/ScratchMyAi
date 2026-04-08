@@ -7,12 +7,15 @@ from typing import Any, List, Literal
 import uuid
 
 from db.supabase import get_supabase
+from services.code_generator import graph_json_to_code
 from services.inference_service import inference_service
 from services.openai_service import run_messages as run_openai_messages
 from api.routes.helperFunctions import (
     TrainRequest,
     get_current_user_id,
     training_stream_generator,
+    _extract_output_model_name,
+    _next_available_model_name,
 )
 
 router = APIRouter(prefix="/models", tags=["models"])
@@ -36,6 +39,11 @@ class SaveModelRequest(BaseModel):
 
 class PredictRequest(BaseModel):
     input_data: List[Any]
+
+
+class ExportPythonRequest(BaseModel):
+    graph_json: dict[str, Any]
+    dataset: str | None = None
 
 
 _TUTOR_SYSTEM_PROMPT = """You are Axon, an AI tutor embedded inside AxonX — a visual neural network builder where students design deep learning architectures by connecting blocks on a canvas.
@@ -237,6 +245,8 @@ async def save_model(request: SaveModelRequest, user_id: str = Depends(get_curre
     """Registers a newly trained model in the database."""
     
     supabase = get_supabase()
+    base_model_name = _extract_output_model_name(request.graph_json or {}, fallback=request.name)
+    model_name = _next_available_model_name(user_id, base_model_name)
     
     # We expect the weights to have been uploaded by the worker (e.g. Modal)
     # or we handle the weights upload here. For now, we mock the path.
@@ -245,7 +255,7 @@ async def save_model(request: SaveModelRequest, user_id: str = Depends(get_curre
     
     record = {
         "user_id": user_id,
-        "name": request.name,
+        "name": model_name,
         "graph_json": request.graph_json,
         "weights_path": weights_path,
         "dataset": request.dataset,
@@ -261,6 +271,22 @@ async def save_model(request: SaveModelRequest, user_id: str = Depends(get_curre
         raise HTTPException(status_code=500, detail="Failed to save model metadata")
         
     return response.data[0]
+
+
+@router.post("/export/python")
+async def export_python_script(request: ExportPythonRequest, user_id: str = Depends(get_current_user_id)):
+    """Generate a runnable Python training script from graph JSON."""
+    graph_payload = dict(request.graph_json or {})
+    if request.dataset and not graph_payload.get("dataset"):
+        graph_payload["dataset"] = request.dataset
+
+    try:
+        code = graph_json_to_code(graph_payload)
+        return {"code": code}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export python code: {str(e)}") from e
 
 @router.get("/")
 async def list_models(user_id: str = Depends(get_current_user_id)):

@@ -1,15 +1,32 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Download, FileJson, Save } from "lucide-react";
 import { Button } from "@heroui/react/button";
 import { Input } from "@heroui/react/input";
 import { Spinner } from "@heroui/react/spinner";
 import { useStore } from "@/store/useStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { saveGraph } from "@/lib/graphFunctions";
+import { supabase } from "@/lib/supabase";
 import { TrainingConsole } from "@/pages/graph/training/TrainingConsole";
 import { TrainButton } from "@/pages/graph/training/TrainButton";
 import { validateGraphStructure } from "@/lib/connectionValidator";
+import { toast } from "@heroui/react";
+
+function PythonLogo({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 128 128" role="img" aria-label="Python logo">
+      <path
+        fill="#3776ab"
+        d="M63.9 8c-28.1 0-26.4 12.2-26.4 12.2v12.6h26.8v3.8H26.8S8 34.5 8 62.9c0 28.4 16.5 27.4 16.5 27.4h9.9V76.5s-.5-16.5 16.2-16.5h27.1s15.2.2 15.2-14.7V20.9S95.2 8 63.9 8Zm-14.7 8.4a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Z"
+      />
+      <path
+        fill="#ffd343"
+        d="M64.1 120c28.1 0 26.4-12.2 26.4-12.2V95.2H63.7v-3.8h37.5s18.8 2.1 18.8-26.3c0-28.4-16.5-27.4-16.5-27.4h-9.9v13.8s.5 16.5-16.2 16.5H50.3s-15.2-.2-15.2 14.7v24.4S32.8 120 64.1 120Zm14.7-8.4a4.8 4.8 0 1 1 0-9.6 4.8 4.8 0 0 1 0 9.6Z"
+      />
+    </svg>
+  );
+}
 
 export function TitleBar() {
   const {
@@ -35,6 +52,7 @@ export function TitleBar() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [isTrainingModalOpen, setIsTrainingModalOpen] = useState(false);
   const [graphDataForTraining, setGraphDataForTraining] = useState<any>(null);
 
@@ -69,7 +87,15 @@ export function TitleBar() {
     setIsTrainingModalOpen(true);
   };
 
+  const handleSetShowConfig = (show: boolean) => {
+    if (show) {
+      setShowExportMenu(false);
+    }
+    setShowConfig(show);
+  };
+
   const handleExport = () => {
+    setShowExportMenu(false);
     import('@/lib/serializeGraph').then(({ serializeGraph }) => {
       const graphData = serializeGraph(nodes, edges, trainingConfig);
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(graphData, null, 2));
@@ -80,6 +106,55 @@ export function TitleBar() {
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
     });
+  };
+
+  const handleExportPython = async () => {
+    try {
+      setShowExportMenu(false);
+      const { serializeGraph } = await import('@/lib/serializeGraph');
+      const graphData = serializeGraph(nodes, edges, trainingConfig);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch('http://localhost:8000/models/export/python', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          graph_json: graphData,
+          dataset: graphData.dataset,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const code = String(payload?.code || '');
+      if (!code.trim()) {
+        throw new Error('Backend returned an empty script');
+      }
+
+      const safeTitle = (title || 'untitled')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '') || 'untitled';
+
+      const blob = new Blob([code], { type: 'text/x-python' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute('href', url);
+      downloadAnchorNode.setAttribute('download', `${safeTitle}_train.py`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to export python code';
+      toast.danger('Export to Python failed', { description: message });
+    }
   };
 
   return (
@@ -129,13 +204,45 @@ export function TitleBar() {
 
           <TrainButton
             showConfig={showConfig}
-            setShowConfig={setShowConfig}
+            setShowConfig={handleSetShowConfig}
             trainingConfig={trainingConfig}
             setTrainingConfig={setTrainingConfig}
             onTrain={handleTrainClick}
-            onExport={handleExport}
             validation={validation}
           />
+
+          <div className="relative">
+            <Button
+              onPress={() => {
+                setShowConfig(false);
+                setShowExportMenu((prev) => !prev);
+              }}
+              variant="outline"
+              aria-label="Export options"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>Export</span>
+                <Download size={15} />
+              </div>
+            </Button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-stone-200 p-2 z-50 animate-in fade-in zoom-in duration-200">
+                <Button onPress={handleExport} variant="ghost" fullWidth>
+                  <div className="w-full flex items-center justify-between">
+                    <span className="text-sm">Export JSON</span>
+                    <FileJson size={16} />
+                  </div>
+                </Button>
+                <Button onPress={handleExportPython} variant="ghost" fullWidth>
+                  <div className="w-full flex items-center justify-between">
+                    <span className="text-sm">Export Python</span>
+                    <PythonLogo size={16} />
+                  </div>
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
