@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@heroui/react';
+import { useStore } from '@/store/useStore';
 
 interface TrainingConsoleProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface TrainingConsoleProps {
 
 export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingConsoleProps) {
   const navigate = useNavigate();
+  const setLastTrainingResult = useStore((s) => s.setLastTrainingResult);
   const [logs, setLogs] = useState<{ id: string; type: 'log' | 'error' | 'done'; message: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'training' | 'success' | 'error'>('idle');
   const [modelId, setModelId] = useState<string | null>(null);
@@ -96,6 +98,12 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
                if (data.type === 'done') {
                  setModelId(data.model_id);
                  setStatus('success');
+                 setLastTrainingResult({
+                   accuracy: data.accuracy ?? null,
+                   loss: data.loss ?? null,
+                   epochs: data.epochs ?? null,
+                   training_time_seconds: data.training_time_seconds ?? null,
+                 });
                } else {
                  setLogs(prev => [...prev, { id: Math.random().toString(), type: data.type, message: data.message }]);
                  if (data.type === 'error') {

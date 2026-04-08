@@ -63,3 +63,4 @@ coverage/
 .coverage
 htmlcov/
 frontend/.heroui-docs/
+.mcp.json

@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Bot, Loader2, PanelRightClose, PanelRightOpen, Send } from 'lucide-react';
+import { Bot, PanelRightClose, PanelRightOpen, Send } from 'lucide-react';
 
-import { askAssistant, type AssistantProvider, type AssistantMessagePayload } from '@/lib/assistantFunctions';
+import { askAssistant, type AssistantMessagePayload } from '@/lib/assistantFunctions';
 import { useStore } from '@/store/useStore';
+import { ChatMessage, TypingIndicator } from '@/components/chat/ChatMessage';
 
-interface ChatMessage {
+interface ChatMsg {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -13,7 +14,6 @@ interface ChatMessage {
 function inferDataset(nodes: ReturnType<typeof useStore.getState>['nodes']): string {
   const datasetNode = nodes.find((node) => (node.data as Record<string, any>)?.blockType === 'dataset');
   if (!datasetNode) return 'unspecified';
-
   const params = ((datasetNode.data as Record<string, any>)?.params ?? {}) as Record<string, any>;
   return String(params.dataset_source ?? 'unspecified');
 }
@@ -23,14 +23,14 @@ export function AIAgentSidebar() {
   const nodes = useStore((state) => state.nodes);
   const edges = useStore((state) => state.edges);
   const trainingConfig = useStore((state) => state.trainingConfig);
+  const lastTrainingResult = useStore((state) => state.lastTrainingResult);
 
   const [collapsed, setCollapsed] = useState(false);
-  const [provider, setProvider] = useState<AssistantProvider>('openai');
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<ChatMsg[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Ask me about your graph. I can suggest missing blocks, parameter fixes, and training setup improvements.',
+      content: "Ask me about your graph — I can suggest missing blocks, parameter fixes, and training improvements.",
     },
   ]);
   const [input, setInput] = useState('');
@@ -50,9 +50,7 @@ export function AIAgentSidebar() {
 
   useEffect(() => {
     const el = document.getElementById('ai-agent-messages');
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages, isSending]);
 
   const sendMessage = async (e?: FormEvent) => {
@@ -60,16 +58,8 @@ export function AIAgentSidebar() {
     const trimmed = input.trim();
     if (!trimmed || isSending) return;
 
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-    };
-
-    const history: AssistantMessagePayload[] = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const userMessage: ChatMsg = { id: `user-${Date.now()}`, role: 'user', content: trimmed };
+    const history: AssistantMessagePayload[] = messages.map((m) => ({ role: m.role, content: m.content }));
 
     setInput('');
     setError(null);
@@ -78,10 +68,11 @@ export function AIAgentSidebar() {
 
     try {
       const response = await askAssistant({
-        provider,
+        provider: 'openai',
         message: trimmed,
         history,
         graph: graphSnapshot,
+        training_results: lastTrainingResult ?? null,
       });
 
       setMessages((prev) => [
@@ -89,7 +80,7 @@ export function AIAgentSidebar() {
         {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: response.reply || 'No response returned by the assistant.',
+          content: response.reply || 'No response returned.',
         },
       ]);
     } catch (err: any) {
@@ -101,96 +92,75 @@ export function AIAgentSidebar() {
 
   return (
     <aside
-      className={`hidden lg:flex border-l border-[#e8e7e2] bg-[#fffdf8] h-full transition-all duration-200 ${
+      className={`hidden lg:flex border-l border-[#e8e7e2] bg-white h-full transition-all duration-200 ${
         collapsed ? 'w-14' : 'w-[360px]'
       }`}
     >
       <div className="flex h-full w-full flex-col">
-        <div className="flex items-center justify-between border-b border-[#e8e7e2] px-3 py-3 bg-[#f4f1e7]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[#e8e8e8] px-3 py-3 bg-white shrink-0">
           {!collapsed && (
-            <div>
-              <h3 className="text-sm font-semibold text-[#1f2937]">AI Graph Agent</h3>
-              <p className="text-xs text-[#6b7280]">Context-aware help for your current graph</p>
+            <div className="flex items-center gap-2">
+              <Bot size={15} className="text-[#555]" />
+              <div>
+                <h3 className="text-[13px] font-semibold text-[#111]">AI Tutor</h3>
+                <p className="text-[11px] text-[#999]">{nodes.length} blocks · {edges.length} connections</p>
+              </div>
             </div>
           )}
           <button
             type="button"
             onClick={() => setCollapsed((prev) => !prev)}
-            className="rounded-md p-1.5 text-[#4b5563] hover:bg-[#e8e4d7]"
-            title={collapsed ? 'Expand AI sidebar' : 'Collapse AI sidebar'}
+            className="rounded-md p-1.5 text-[#999] hover:text-[#333] hover:bg-[#f5f5f5] transition-colors ml-auto"
+            title={collapsed ? 'Expand' : 'Collapse'}
           >
-            {collapsed ? <PanelRightOpen size={18} /> : <PanelRightClose size={18} />}
+            {collapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
           </button>
         </div>
 
         {collapsed ? (
-          <div className="flex flex-1 flex-col items-center justify-start gap-4 py-4 text-[#6b7280]">
-            <Bot size={18} />
+          <div className="flex flex-1 flex-col items-center justify-start gap-4 py-4 text-[#bbb]">
+            <Bot size={16} />
           </div>
         ) : (
           <>
-            <div className="border-b border-[#e8e7e2] px-3 py-2 flex items-center gap-2">
-              <label className="text-xs font-medium text-[#6b7280]">Provider</label>
-              <select
-                className="rounded-md border border-[#d6d3cc] bg-white px-2 py-1 text-xs"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as AssistantProvider)}
-                disabled={isSending}
-              >
-                <option value="claude">Claude</option>
-                <option value="openai">OpenAI</option>
-              </select>
-              <div className="ml-auto text-[10px] text-[#9ca3af]">
-                {nodes.length} nodes • {edges.length} edges
-              </div>
-            </div>
-
-            <div id="ai-agent-messages" className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+            {/* Messages */}
+            <div id="ai-agent-messages" className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`max-w-[92%] rounded-xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
-                    message.role === 'user'
-                      ? 'ml-auto bg-[#1f2937] text-white'
-                      : 'bg-[#eef2ff] text-[#111827] border border-[#dbe2ff]'
-                  }`}
-                >
-                  {message.content}
-                </div>
+                <ChatMessage key={message.id} role={message.role} content={message.content} />
               ))}
-              {isSending && (
-                <div className="inline-flex items-center gap-2 rounded-xl border border-[#dbe2ff] bg-[#eef2ff] px-3 py-2 text-sm text-[#111827]">
-                  <Loader2 size={14} className="animate-spin" />
-                  Thinking...
-                </div>
-              )}
+              {isSending && <TypingIndicator />}
             </div>
 
-            {error && <div className="px-3 pb-2 text-xs text-red-600">{error}</div>}
+            {error && <div className="px-4 pb-2 text-[11px] text-red-500">{error}</div>}
 
-            <form onSubmit={sendMessage} className="border-t border-[#e8e7e2] p-3 flex items-end gap-2">
-              <textarea
-                rows={3}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Ask about your graph"
-                className="flex-1 resize-none rounded-lg border border-[#d6d3cc] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#94a3b8]"
-                disabled={isSending}
-              />
-              <button
-                type="submit"
-                disabled={isSending || !input.trim()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#2563eb] text-white disabled:opacity-40"
-                title="Send"
-              >
-                {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              </button>
+            {/* Input */}
+            <form onSubmit={sendMessage} className="p-4 bg-white border-t border-[#e8e8e8]">
+              <div className="relative flex flex-col border border-[#e5e5e5] rounded-xl bg-white focus-within:ring-1 focus-within:ring-[#111] focus-within:border-[#111] transition-all">
+                <textarea
+                  rows={3}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Ask about your graph…"
+                  className="w-full resize-none bg-transparent border-0 focus:ring-0 p-3 pb-12 text-[13px] text-[#333] placeholder-[#bbb] outline-none min-h-[96px] rounded-xl"
+                  disabled={isSending}
+                />
+                <div className="absolute bottom-2 right-2">
+                  <button
+                    type="submit"
+                    disabled={isSending || !input.trim()}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1a1a1a] text-white hover:bg-[#333] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send size={14} />
+                  </button>
+                </div>
+              </div>
             </form>
           </>
         )}

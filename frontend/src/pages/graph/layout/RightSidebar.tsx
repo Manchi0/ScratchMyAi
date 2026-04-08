@@ -5,9 +5,10 @@ import {
   CheckCircle2, XCircle, Lightbulb,
   PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
-import { Button, Label, ListBox, Select, Spinner, Tabs, TextArea } from '@heroui/react';
+import { Button, Label, ListBox, Select, Tabs, TextArea } from '@heroui/react';
 
-import { askAssistant, type AssistantProvider, type AssistantMessagePayload } from '@/lib/assistantFunctions';
+import { askAssistant, type AssistantMessagePayload } from '@/lib/assistantFunctions';
+import { ChatMessage, TypingIndicator } from '@/components/chat/ChatMessage';
 import { updateCourseProgress } from '@/lib/courseFunctions';
 import { useStore } from '@/store/useStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -15,7 +16,7 @@ import type { Course, LessonStep, CheckResult } from '@/pages/learn/courses/mlpI
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ChatMessage {
+interface ChatMsg {
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -104,9 +105,9 @@ function AIAgentPanel() {
   const nodes          = useStore(s => s.nodes);
   const edges          = useStore(s => s.edges);
   const trainingConfig = useStore(s => s.trainingConfig);
+  const lastTrainingResult = useStore(s => s.lastTrainingResult);
 
-  const [provider,  setProvider]  = useState<AssistantProvider>('openai');
-  const [messages,  setMessages]  = useState<ChatMessage[]>([
+  const [messages,  setMessages]  = useState<ChatMsg[]>([
     { id: 'welcome', role: 'assistant', content: 'Ask me about your graph — I can suggest missing blocks, parameter fixes, and training improvements.' },
   ]);
   const [input,     setInput]     = useState('');
@@ -131,13 +132,19 @@ function AIAgentPanel() {
     e?.preventDefault();
     const text = input.trim();
     if (!text || isSending) return;
-    const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text };
+    const userMsg: ChatMsg = { id: `u-${Date.now()}`, role: 'user', content: text };
     const history: AssistantMessagePayload[] = messages.map(m => ({ role: m.role, content: m.content }));
     setInput(''); setError(null);
     setMessages(prev => [...prev, userMsg]);
     setIsSending(true);
     try {
-      const res = await askAssistant({ provider, message: text, history, graph: graphSnapshot });
+      const res = await askAssistant({
+        provider: 'openai',
+        message: text,
+        history,
+        graph: graphSnapshot,
+        training_results: lastTrainingResult ?? null,
+      });
       setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', content: res.reply || 'No response.' }]);
     } catch (err: any) {
       setError(err?.message || 'Failed to reach AI');
@@ -148,27 +155,12 @@ function AIAgentPanel() {
 
   return (
     <div className="flex flex-col h-full">
-
       {/* Messages */}
       <div id="ai-messages" className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${
-              msg.role === 'user'
-                ? 'ml-auto bg-[#1a1a1a] text-white rounded-br-sm'
-                : 'bg-[#f3f3f3] text-[#222] border border-[#e8e8e8] rounded-bl-sm'
-            }`}
-          >
-            {msg.content}
-          </div>
+          <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
         ))}
-        {isSending && (
-          <div className="flex items-center gap-2 bg-[#f3f3f3] border border-[#e8e8e8] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-[13px] text-[#555] w-fit">
-            <Spinner size="sm" className="text-[#999]" />
-            <span>Thinking…</span>
-          </div>
-        )}
+        {isSending && <TypingIndicator />}
       </div>
 
       {error && <p className="px-4 pb-1 text-[11px] text-red-500">{error}</p>}
@@ -181,19 +173,19 @@ function AIAgentPanel() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-            placeholder="Ask about your graph..."
+            placeholder="Ask about your graph…"
             disabled={isSending}
-            className="w-full resize-none bg-transparent border-0 focus:ring-0 p-3 pb-12 text-[13px] text-[#333] placeholder-[#aaa] outline-none min-h-[96px] rounded-xl"
+            className="w-full resize-none bg-transparent border-0 focus:ring-0 p-3 pb-12 text-[13px] text-[#333] placeholder-[#bbb] outline-none min-h-[96px] rounded-xl"
             aria-label="Message input"
           />
-          <div className="absolute bottom-2 right-2 flex items-center justify-end">
+          <div className="absolute bottom-2 right-2">
             <button
               type="submit"
               disabled={isSending || !input.trim()}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1a1a1a] text-white hover:bg-[#333] disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#1a1a1a] text-white hover:bg-[#333] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               aria-label="Send message"
             >
-              {isSending ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+              <ArrowRight size={14} />
             </button>
           </div>
         </div>

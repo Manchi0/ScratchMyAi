@@ -30,6 +30,7 @@ import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 import { loadGraph } from "@/lib/graphFunctions";
+import { validateConnection } from "@/lib/connectionValidator";
 import { ContextMenu, type ContextMenuData } from "./ContextMenu";
 
 import type { Course } from "@/pages/learn/courses/mlpIntro";
@@ -232,6 +233,14 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
     }
   }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, setCourseId, setStepIndex, setCheckResult, setHintLevel, initialLessonCourseId, user]);
 
+  const isValidConnection = useCallback((connection: any) => {
+    const { nodes: currentNodes } = useStore.getState();
+    const srcNode = currentNodes.find((n) => n.id === connection.source);
+    const tgtNode = currentNodes.find((n) => n.id === connection.target);
+    if (!srcNode || !tgtNode) return true;
+    return validateConnection(srcNode, tgtNode).valid;
+  }, []);
+
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -284,6 +293,7 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              isValidConnection={isValidConnection}
               onDragOver={onDragOver}
               onDrop={onDrop}
               onNodeContextMenu={(e, node) => {

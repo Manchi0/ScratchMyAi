@@ -23,11 +23,19 @@ export interface GraphSnapshot {
   };
 }
 
+export interface TrainingResult {
+  accuracy: number | null;
+  loss: number | null;
+  epochs: number | null;
+  training_time_seconds: number | null;
+}
+
 export interface AssistantChatRequest {
   provider: AssistantProvider;
   message: string;
   history: AssistantMessagePayload[];
   graph: GraphSnapshot;
+  training_results?: TrainingResult | null;
 }
 
 interface AssistantChatResponse {

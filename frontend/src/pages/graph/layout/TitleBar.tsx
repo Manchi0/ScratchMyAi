@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { saveGraph } from "@/lib/graphFunctions";
 import { TrainingConsole } from "@/pages/graph/training/TrainingConsole";
 import { TrainButton } from "@/pages/graph/training/TrainButton";
+import { validateGraphStructure } from "@/lib/connectionValidator";
 
 export function TitleBar() {
   const {
@@ -24,6 +25,12 @@ export function TitleBar() {
   } = useStore();
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+
+  const validation = {
+    structuralIssues: validateGraphStructure(nodes, edges),
+    edgeErrorCount: edges.filter((e) => e.data?.validationSeverity === 'error').length,
+    edgeWarningCount: edges.filter((e) => e.data?.validationSeverity === 'warning').length,
+  };
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -127,6 +134,7 @@ export function TitleBar() {
             setTrainingConfig={setTrainingConfig}
             onTrain={handleTrainClick}
             onExport={handleExport}
+            validation={validation}
           />
         </div>
       </header>

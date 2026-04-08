@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toast } from '@heroui/react';
 import LoginPage from '@/pages/auth/LoginPage';
 import UpdatePasswordPage from '@/pages/auth/UpdatePasswordPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
@@ -53,6 +54,7 @@ const App = () => {
 
   return (
     <BrowserRouter>
+      <Toast.Provider placement="top" />
       <div className="font-sans antialiased">
         <Routes>
           <Route

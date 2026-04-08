@@ -3,12 +3,20 @@ import { Button } from "@heroui/react/button";
 import { Select } from "@heroui/react/select";
 import { Input } from "@heroui/react/input";
 import { ListBox } from "@heroui/react/list-box";
+import { toast } from "@heroui/react";
+import type { StructuralIssue } from "@/lib/connectionValidator";
 
 interface TrainingConfig {
   loss: string;
   optimizer: string;
   learning_rate: number;
   epochs: number;
+}
+
+export interface ValidationSummary {
+  structuralIssues: StructuralIssue[];
+  edgeErrorCount: number;
+  edgeWarningCount: number;
 }
 
 interface TrainButtonProps {
@@ -18,6 +26,7 @@ interface TrainButtonProps {
   setTrainingConfig: (config: Partial<TrainingConfig>) => void;
   onTrain: () => void;
   onExport: () => void;
+  validation: ValidationSummary;
 }
 
 export function TrainButton({
@@ -27,13 +36,66 @@ export function TrainButton({
   setTrainingConfig,
   onTrain,
   onExport,
+  validation,
 }: TrainButtonProps) {
+  const hardErrors = validation.structuralIssues.filter((i) => i.severity === 'error');
+  const warnings = validation.structuralIssues.filter((i) => i.severity === 'warning');
+  const hasBlockingErrors = hardErrors.length > 0 || validation.edgeErrorCount > 0;
+  const hasWarningsOnly =
+    !hasBlockingErrors && (warnings.length > 0 || validation.edgeWarningCount > 0);
+
+  const buildErrorDescription = () => {
+    const lines: string[] = [
+      ...hardErrors.map((i) => i.message),
+      ...(validation.edgeErrorCount > 0
+        ? [`${validation.edgeErrorCount} invalid connection${validation.edgeErrorCount > 1 ? 's' : ''} in the graph (shown in red).`]
+        : []),
+    ];
+    return lines.join('\n');
+  };
+
+  const buildWarningDescription = () => {
+    const lines: string[] = [
+      ...warnings.map((i) => i.message),
+      ...(validation.edgeWarningCount > 0
+        ? [`${validation.edgeWarningCount} dimension mismatch${validation.edgeWarningCount > 1 ? 'es' : ''} detected.`]
+        : []),
+    ];
+    return lines.join('\n');
+  };
+
+  const handleStartTraining = () => {
+    if (hasBlockingErrors) {
+      toast.danger("Cannot Start Training", {
+        description: buildErrorDescription(),
+        timeout: 3000,
+      });
+      return;
+    }
+
+    if (hasWarningsOnly) {
+      toast.warning("Graph Has Warnings", {
+        description: buildWarningDescription(),
+        timeout: 0,
+        actionProps: {
+          children: "Train Anyway",
+          onPress: () => {
+            toast.clear();
+            setShowConfig(false);
+            onTrain();
+          },
+        },
+      });
+      return;
+    }
+
+    setShowConfig(false);
+    onTrain();
+  };
+
   return (
     <div className="relative">
-      <Button
-        onPress={() => setShowConfig(!showConfig)}
-        variant="primary"
-      >
+      <Button onPress={() => setShowConfig(!showConfig)} variant="primary">
         <span>Train</span>
         <Settings size={15} className="transition-transform" />
       </Button>
@@ -120,22 +182,11 @@ export function TrainButton({
               </div>
             </div>
 
-            <div className="flex flex gap-2">
-              <Button
-                onPress={() => {
-                  setShowConfig(false);
-                  onTrain();
-                }}
-                variant="primary"
-                fullWidth
-              >
+            <div className="flex gap-2">
+              <Button onPress={handleStartTraining} variant="primary" fullWidth>
                 Start Training
               </Button>
-              <Button
-                onPress={onExport}
-                variant="outline"
-                fullWidth
-              >
+              <Button onPress={onExport} variant="outline" fullWidth>
                 Export JSON
               </Button>
             </div>

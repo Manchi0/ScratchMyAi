@@ -38,9 +38,35 @@ class PredictRequest(BaseModel):
     input_data: List[Any]
 
 
+_TUTOR_SYSTEM_PROMPT = """You are Axon, an AI tutor embedded inside AxonX — a visual neural network builder where students design deep learning architectures by connecting blocks on a canvas.
+
+Your teaching philosophy:
+- Be Socratic when a student seems confused or asks something vague. Ask one focused guiding question that helps them reason through the problem themselves, rather than immediately handing them the answer.
+- Always explain the *why*, not just the *what*. If you suggest adding a ReLU after a Linear layer, explain what non-linearity does and why it matters for that student's specific architecture.
+- Reference the student's actual graph and training results directly — never give generic ML advice when you have their specific architecture and metrics in front of you. Mention exact numbers, specific layer names, and actual parameter values.
+- Point out architectural mistakes in the graph when they are relevant to the question being asked. If you notice a problem (e.g. Conv2d → Linear without a Flatten), flag it clearly.
+- Be honest about uncertainty. If you're not sure why their model is behaving a certain way, say "I'm not certain, but..." — never guess confidently.
+- Keep responses concise and beginner-friendly. When you use jargon (like "vanishing gradients", "feature maps", or "overfitting"), explain it briefly in plain language immediately after.
+- Do not lecture at length when a short answer will do. Match your verbosity to the complexity of the question.
+
+What you have access to:
+- The student's full graph: every block they've placed (with its type and all parameters like in_features, out_channels, hidden_size), and every connection between blocks.
+- Their latest training results: final accuracy, final loss, number of epochs completed, and total training time. If no training has been done, this is stated explicitly — in that case, do not reference or invent metrics.
+- Their training configuration: optimizer choice, loss function, learning rate, and number of epochs set.
+
+Always use this context. A student who asks "why is my accuracy low?" needs you to look at their actual accuracy number, their specific architecture (are layers correctly sized? is there a proper output?), and their training config (is the learning rate reasonable? enough epochs?) — not a generic bullet list of possible causes."""
+
+
 class AssistantMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+
+
+class TrainingResult(BaseModel):
+    accuracy: float | None = None
+    loss: float | None = None
+    epochs: int | None = None
+    training_time_seconds: float | None = None
 
 
 class AssistantChatRequest(BaseModel):
@@ -49,6 +75,7 @@ class AssistantChatRequest(BaseModel):
     graph: dict[str, Any] = Field(default_factory=dict)
     model: str | None = None
     system: str | None = None
+    training_results: TrainingResult | None = None
 
 
 class AssistantChatResponse(BaseModel):
@@ -57,7 +84,7 @@ class AssistantChatResponse(BaseModel):
     reply: str
 
 
-def _build_graph_summary(graph: dict[str, Any]) -> str:
+def _build_graph_summary(graph: dict[str, Any], training_results: TrainingResult | None = None) -> str:
     if not graph:
         return "No graph context was provided."
 
@@ -67,45 +94,119 @@ def _build_graph_summary(graph: dict[str, Any]) -> str:
     edges = graph.get("edges") or []
     training_config = graph.get("training_config") or {}
 
-    block_types: dict[str, int] = {}
+    lines = [
+        f"Graph title: {title}",
+        f"Dataset: {dataset}",
+        f"Training config: optimizer={training_config.get('optimizer', '?')}, "
+        f"loss={training_config.get('loss', '?')}, "
+        f"lr={training_config.get('learning_rate', '?')}, "
+        f"epochs={training_config.get('epochs', '?')}",
+        "",
+        f"Architecture ({len(nodes)} blocks, {len(edges)} connections):",
+    ]
+
     for node in nodes:
-        block_type = (
-            (node.get("data") or {}).get("blockType")
-            or (node.get("type") or "unknown")
+        data = node.get("data") or {}
+        block_type = data.get("blockType") or node.get("type") or "unknown"
+        params = data.get("params") or {}
+        node_id = node.get("id", "?")
+        if params:
+            param_str = ", ".join(f"{k}={v}" for k, v in params.items())
+            lines.append(f"  [{node_id}] {block_type}: {param_str}")
+        else:
+            lines.append(f"  [{node_id}] {block_type}")
+
+    if edges:
+        lines.append("")
+        lines.append("Connections:")
+        for edge in edges:
+            lines.append(f"  {edge.get('source', '?')} → {edge.get('target', '?')}")
+
+    lines.append("")
+    if training_results and any(
+        v is not None for v in [training_results.accuracy, training_results.loss, training_results.epochs]
+    ):
+        parts = []
+        if training_results.accuracy is not None:
+            parts.append(f"accuracy={training_results.accuracy:.1%}")
+        if training_results.loss is not None:
+            parts.append(f"loss={training_results.loss:.4f}")
+        if training_results.epochs is not None:
+            parts.append(f"epochs_completed={training_results.epochs}")
+        if training_results.training_time_seconds is not None:
+            parts.append(f"training_time={training_results.training_time_seconds:.1f}s")
+        lines.append(f"Latest training results: {', '.join(parts)}")
+    else:
+        lines.append("Training status: this architecture has not been trained yet.")
+
+    return "\n".join(lines)
+
+
+def _check_graph_warnings(reply: str, graph: dict[str, Any]) -> list[str]:
+    """Check the graph for situations where the tutor's suggestion may not apply."""
+    warnings: list[str] = []
+    reply_lower = reply.lower()
+    nodes = graph.get("nodes") or []
+
+    block_types = []
+    for node in nodes:
+        data = node.get("data") or {}
+        bt = (data.get("blockType") or node.get("type") or "").lower()
+        block_types.append(bt)
+
+    dataset = str(graph.get("dataset") or "").lower().strip()
+    has_flatten = "flatten" in block_types
+    has_linear = "linear" in block_types
+    has_output = "output" in block_types
+
+    # Conv2d suggested but graph already flattened before linear layers
+    if any(kw in reply_lower for kw in ["conv2d", "convolutional", "conv layer", "convolution"]):
+        if has_flatten and has_linear:
+            warnings.append(
+                "⚠ Graph note: Your graph already has a Flatten layer before Linear layers. "
+                "Conv2d requires 2D spatial input (H×W×C) and must come before any Flatten — "
+                "it cannot be placed after the data has been flattened into a 1D vector."
+            )
+
+    # Recurrent layers suggested on image datasets
+    if any(kw in reply_lower for kw in ["lstm", "rnn", "gru", "recurrent"]):
+        image_datasets = {"mnist", "fashionmnist", "fashion_mnist", "cifar10", "cifar-10"}
+        if dataset in image_datasets:
+            warnings.append(
+                f"⚠ Graph note: Your dataset is {dataset.upper()}, which is an image dataset. "
+                "Recurrent layers (LSTM/RNN/GRU) are designed for sequential data like text or time series. "
+                "They are unconventional for image classification and will likely underperform a CNN or MLP here."
+            )
+
+    # BatchNorm suggested but graph has too few layers
+    if any(kw in reply_lower for kw in ["batchnorm", "batch norm", "batch normalization"]):
+        hidden_layers = [bt for bt in block_types if bt not in ("dataset", "output")]
+        if len(hidden_layers) < 2:
+            warnings.append(
+                "⚠ Graph note: Your graph currently has fewer than two hidden layers. "
+                "BatchNorm normalizes the output of a preceding layer — it needs at least one "
+                "Linear or Conv2d layer before it to be meaningful."
+            )
+
+    # Missing output block — always flag
+    if not has_output:
+        warnings.append(
+            "⚠ Graph note: Your graph is missing an Output (Model) block. "
+            "Without it the graph has no defined endpoint and training will fail."
         )
-        block_types[block_type] = block_types.get(block_type, 0) + 1
 
-    block_type_summary = ", ".join(
-        f"{name} x{count}" for name, count in sorted(block_types.items(), key=lambda x: x[0])
-    )
-    if not block_type_summary:
-        block_type_summary = "none"
-
-    return (
-        f"Graph title: {title}\n"
-        f"Dataset: {dataset}\n"
-        f"Node count: {len(nodes)}\n"
-        f"Edge count: {len(edges)}\n"
-        f"Block types: {block_type_summary}\n"
-        f"Training config: {training_config}"
-    )
+    return warnings
 
 
 @router.post("/assistant/chat", response_model=AssistantChatResponse)
 async def assistant_chat(request: AssistantChatRequest, user_id: str = Depends(get_current_user_id)):
-    """Chat with an AI assistant using current graph status as context."""
+    """Chat with an AI tutor using the student's graph and training results as context."""
     prompt = (request.message or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    graph_summary = _build_graph_summary(request.graph or {})
-    system_prompt = (
-        request.system
-        or "You are an expert assistant for a visual neural-network graph builder. "
-        "Give practical, concise guidance based on the graph context. "
-        "If the graph looks incomplete, suggest concrete next blocks or parameter fixes."
-    )
-    system_prompt = f"{system_prompt}\n\nCurrent graph context:\n{graph_summary}"
+    graph_summary = _build_graph_summary(request.graph or {}, request.training_results)
+    system_prompt = f"{_TUTOR_SYSTEM_PROMPT}\n\n---\nStudent's current context:\n{graph_summary}"
 
     history_messages = [
         {"role": m.role, "content": m.content}
@@ -115,8 +216,14 @@ async def assistant_chat(request: AssistantChatRequest, user_id: str = Depends(g
     messages = [*history_messages, {"role": "user", "content": prompt}]
 
     try:
-        model = request.model or "gpt-4.1-mini"
+        model = request.model or "gpt-4o"
         reply = run_openai_messages(messages=messages, system=system_prompt, model=model)
+
+        # Append any graph-specific warnings that are triggered by the reply
+        graph_warnings = _check_graph_warnings(reply, request.graph or {})
+        if graph_warnings:
+            reply = reply.rstrip() + "\n\n" + "\n".join(graph_warnings)
+
         return AssistantChatResponse(provider="openai", model=model, reply=reply)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

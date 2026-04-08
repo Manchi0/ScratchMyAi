@@ -10,6 +10,7 @@ import {
   addEdge,
 } from "@xyflow/react";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
+import { validateConnection } from "@/lib/connectionValidator";
 import type { CheckResult } from "@/pages/learn/courses/mlpIntro";
 
 export interface TrainingConfig {
@@ -44,6 +45,20 @@ interface AppState {
   // Training Configuration
   trainingConfig: TrainingConfig;
   setTrainingConfig: (config: Partial<TrainingConfig>) => void;
+
+  // Last training result (populated after a successful training run)
+  lastTrainingResult: {
+    accuracy: number | null;
+    loss: number | null;
+    epochs: number | null;
+    training_time_seconds: number | null;
+  } | null;
+  setLastTrainingResult: (result: {
+    accuracy: number | null;
+    loss: number | null;
+    epochs: number | null;
+    training_time_seconds: number | null;
+  } | null) => void;
 
   // Lesson State
   stepIndex: number;
@@ -81,20 +96,29 @@ export const useStore = create<AppState>((set, get) => ({
 
   onConnect: (connection) => {
     set((state) => {
-      // Find the source node to steal its category color
       const sourceNode = state.nodes.find((n) => n.id === connection.source);
+      const targetNode = state.nodes.find((n) => n.id === connection.target);
+
       let edgeColor = '#8b5cf6'; // default
-      
       if (sourceNode && sourceNode.data.blockType) {
         const def = getBlockDefinition(sourceNode.data.blockType as string);
         if (def) edgeColor = def.color;
       }
 
+      const validation =
+        sourceNode && targetNode
+          ? validateConnection(sourceNode, targetNode)
+          : { valid: true, severity: 'none' as const, message: '' };
+
       const newEdge = {
         ...connection,
         id: `e-${connection.source}-${connection.target}`,
         type: 'wire',
-        data: { color: edgeColor }
+        data: {
+          color: edgeColor,
+          validationSeverity: validation.severity,
+          validationMessage: validation.message,
+        },
       } as Edge;
 
       return {
@@ -106,21 +130,39 @@ export const useStore = create<AppState>((set, get) => ({
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
   updateNodeData: (nodeId, newData) => {
-    set({
-      nodes: get().nodes.map((node) => {
+    set((state) => {
+      const updatedNodes = state.nodes.map((node) => {
         if (node.id === nodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              ...newData,
-            },
-          };
+          return { ...node, data: { ...node.data, ...newData } };
         }
         return node;
-      }),
+      });
+
+      // Re-validate any edge that touches the updated node
+      const updatedEdges = state.edges.map((edge) => {
+        if (edge.source !== nodeId && edge.target !== nodeId) return edge;
+
+        const srcNode = updatedNodes.find((n) => n.id === edge.source);
+        const tgtNode = updatedNodes.find((n) => n.id === edge.target);
+        if (!srcNode || !tgtNode) return edge;
+
+        const validation = validateConnection(srcNode, tgtNode);
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            validationSeverity: validation.severity,
+            validationMessage: validation.message,
+          },
+        };
+      });
+
+      return { nodes: updatedNodes, edges: updatedEdges };
     });
   },
+
+  lastTrainingResult: null,
+  setLastTrainingResult: (result) => set({ lastTrainingResult: result }),
 
   trainingConfig: {
     loss: "CrossEntropy",

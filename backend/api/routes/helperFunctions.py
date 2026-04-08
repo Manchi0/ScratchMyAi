@@ -227,7 +227,7 @@ def training_stream_generator(request: TrainRequest, user_id: str):
             resp = supabase.table("trained_models").insert(record).execute()
             model_id = resp.data[0]["id"]
 
-            yield f"data: {json.dumps({'type': 'done', 'model_id': model_id})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'model_id': model_id, 'accuracy': final_accuracy, 'loss': final_loss, 'epochs': persisted_epochs, 'training_time_seconds': training_time_seconds})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': f'Failed to save to Supabase: {str(e)}'})}\n\n"
     else:
