@@ -10,13 +10,11 @@ interface TrainingConsoleProps {
   onClose: () => void;
   graphData: any;
   title: string;
-  graphId?: string | null;
 }
 
-export function TrainingConsole({ isOpen, onClose, graphData, title, graphId }: TrainingConsoleProps) {
+export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingConsoleProps) {
   const navigate = useNavigate();
   const setLastTrainingResult = useStore((s) => s.setLastTrainingResult);
-  const setLastTrainedModelId = useStore((s) => s.setLastTrainedModelId);
   const [logs, setLogs] = useState<{ id: string; type: 'log' | 'error' | 'done'; message: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'training' | 'success' | 'error'>('idle');
   const [activeView, setActiveView] = useState<'logs' | 'code'>('logs');
@@ -110,8 +108,7 @@ export function TrainingConsole({ isOpen, onClose, graphData, title, graphId }: 
         body: JSON.stringify({
           name: title || "Untitled Model",
           dataset: graphData?.dataset || "mnist",
-          graph_json: graphData,
-          graph_id: graphId || null,
+          graph_json: graphData
         })
       });
 
@@ -145,7 +142,6 @@ export function TrainingConsole({ isOpen, onClose, graphData, title, graphId }: 
                
                if (data.type === 'done') {
                  setModelId(data.model_id);
-                 setLastTrainedModelId(data.model_id ?? null);
                  setStatus('success');
                  setLastTrainingResult({
                    accuracy: data.accuracy ?? null,
