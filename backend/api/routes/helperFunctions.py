@@ -36,6 +36,7 @@ class TrainRequest(BaseModel):
     name: str
     dataset: str
     graph_json: dict[str, Any]
+    graph_id: str | None = None
 
 
 def _extract_output_model_name(graph_payload: dict[str, Any], fallback: str | None = None) -> str:
@@ -277,6 +278,13 @@ def training_stream_generator(request: TrainRequest, user_id: str):
             }
             resp = supabase.table("trained_models").insert(record).execute()
             model_id = resp.data[0]["id"]
+
+            # Link model back to its source graph so the inspector can find it on reload
+            if request.graph_id:
+                try:
+                    supabase.table("graphs").update({"trained_model_id": model_id}).eq("id", request.graph_id).execute()
+                except Exception as link_err:
+                    print(f"Non-fatal: failed to link model {model_id} to graph {request.graph_id}: {link_err}", flush=True)
 
             yield f"data: {json.dumps({'type': 'done', 'model_id': model_id, 'accuracy': final_accuracy, 'loss': final_loss, 'epochs': persisted_epochs, 'training_time_seconds': training_time_seconds})}\n\n"
         except Exception as e:

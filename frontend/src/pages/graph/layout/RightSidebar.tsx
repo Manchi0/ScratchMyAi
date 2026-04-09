@@ -106,6 +106,8 @@ function AIAgentPanel() {
   const edges          = useStore(s => s.edges);
   const trainingConfig = useStore(s => s.trainingConfig);
   const lastTrainingResult = useStore(s => s.lastTrainingResult);
+  const tutorPrefill   = useStore(s => s.tutorPrefill);
+  const setTutorPrefill = useStore(s => s.setTutorPrefill);
 
   const [messages,  setMessages]  = useState<ChatMsg[]>([
     { id: 'welcome', role: 'assistant', content: 'Ask me about your graph — I can suggest missing blocks, parameter fixes, and training improvements.' },
@@ -113,6 +115,19 @@ function AIAgentPanel() {
   const [input,     setInput]     = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
+
+  // Consume prefill from the Block Inspector "Ask Tutor" button
+  useEffect(() => {
+    if (tutorPrefill) {
+      setInput(tutorPrefill);
+      setTutorPrefill(null);
+      // Scroll to input area
+      setTimeout(() => {
+        const el = document.getElementById('ai-chat-input');
+        if (el) el.focus();
+      }, 50);
+    }
+  }, [tutorPrefill, setTutorPrefill]);
 
   function inferDataset(ns: typeof nodes) {
     const dn = ns.find(n => (n.data as any)?.blockType === 'dataset');
@@ -169,6 +184,7 @@ function AIAgentPanel() {
       <form onSubmit={sendMessage} className="p-4 bg-white border-t border-[#ebebeb]">
         <div className="relative flex flex-col border border-[#e5e5e5] rounded-xl bg-white focus-within:ring-1 focus-within:ring-[#111] focus-within:border-[#111] transition-all">
           <textarea
+            id="ai-chat-input"
             rows={3}
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -320,6 +336,7 @@ interface RightSidebarProps {
 export function RightSidebar({ course }: RightSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const showLesson = !!course;
+  const openTutorPanelTick = useStore(s => s.openTutorPanelTick);
 
   const [activeTab, setActiveTab] = useState<'lesson' | 'ai'>(showLesson ? 'lesson' : 'ai');
 
@@ -332,6 +349,14 @@ export function RightSidebar({ course }: RightSidebarProps) {
       setActiveTab('ai');
     }
   }, [course?.id, showLesson]);
+
+  // Open AI panel when the Block Inspector's Ask Tutor button is clicked
+  useEffect(() => {
+    if (openTutorPanelTick > 0) {
+      setCollapsed(false);
+      setActiveTab('ai');
+    }
+  }, [openTutorPanelTick]);
 
   const safeTab = showLesson ? activeTab : 'ai';
 

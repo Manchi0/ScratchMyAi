@@ -339,6 +339,123 @@ async def predict(model_id: str, request: PredictRequest, user_id: str = Depends
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/{model_id}/weights")
+async def get_model_weights(model_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Download the trained .pt file for model_id and return per-layer weight stats
+    plus a 12×20 sampled heatmap grid for each layer that has learnable parameters.
+
+    Response shape:
+        {
+          "layers": {
+            "0": {
+              "shape": [out, in],
+              "stats": { "min", "max", "mean", "std" },
+              "sample": [240 floats, row-major 12×20],
+              "rows": 12,
+              "cols": 20
+            },
+            ...
+          }
+        }
+    Layer keys are string integers matching nn.Sequential indices.
+    Layers with no learnable parameters (ReLU, Flatten, etc.) are omitted.
+    """
+    import io
+    import torch
+    import numpy as np
+
+    supabase = get_supabase()
+
+    resp = supabase.table("trained_models") \
+        .select("weights_path") \
+        .eq("id", model_id) \
+        .eq("user_id", user_id) \
+        .execute()
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    weights_path = resp.data[0].get("weights_path")
+    if not weights_path:
+        raise HTTPException(status_code=404, detail="Model has no weights file")
+
+    try:
+        weights_bytes = supabase.storage.from_("ai-models").download(weights_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to download weights: {e}")
+
+    if len(weights_bytes) < 256 or weights_bytes[:4] != b"PK\x03\x04":
+        raise HTTPException(
+            status_code=422,
+            detail="Weights file is corrupted or truncated — retrain the model."
+        )
+
+    buf = io.BytesIO(weights_bytes)
+    try:
+        state_dict = torch.load(buf, map_location="cpu", weights_only=False)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse weights: {e}")
+
+    # Group tensors by their top-level sequential index ("0", "1", "2", ...)
+    layer_groups: dict[int, dict[str, torch.Tensor]] = {}
+    for key, tensor in state_dict.items():
+        parts = key.split(".")
+        if not parts[0].isdigit():
+            continue
+        layer_idx = int(parts[0])
+        param_key = ".".join(parts[1:])
+        if layer_idx not in layer_groups:
+            layer_groups[layer_idx] = {}
+        # Only float tensors (skip running_mean / num_batches_tracked etc. that have no grad)
+        if isinstance(tensor, torch.Tensor) and tensor.dtype in (torch.float32, torch.float16, torch.bfloat16):
+            layer_groups[layer_idx][param_key] = tensor.float()
+
+    ROWS, COLS = 12, 20
+    SAMPLE_SIZE = ROWS * COLS
+
+    result: dict[str, dict] = {}
+
+    for idx in sorted(layer_groups.keys()):
+        params = layer_groups[idx]
+        if not params:
+            continue
+
+        # Pick the primary weight tensor: prefer key ending in "weight", else take largest
+        primary: torch.Tensor | None = None
+        for k, t in params.items():
+            if k.endswith("weight") or k == "weight":
+                if primary is None or t.numel() > primary.numel():
+                    primary = t
+        if primary is None:
+            primary = max(params.values(), key=lambda t: t.numel())
+
+        flat = primary.reshape(-1).numpy().astype(np.float32)
+
+        # Sample evenly across the full flat tensor
+        if len(flat) >= SAMPLE_SIZE:
+            indices = np.round(np.linspace(0, len(flat) - 1, SAMPLE_SIZE)).astype(int)
+            sample = flat[indices]
+        else:
+            # Tile + truncate so we always return exactly ROWS×COLS values
+            repeats = int(np.ceil(SAMPLE_SIZE / max(len(flat), 1)))
+            sample = np.tile(flat, repeats)[:SAMPLE_SIZE]
+
+        result[str(idx)] = {
+            "shape": list(primary.shape),
+            "stats": {
+                "min":  round(float(primary.min()), 6),
+                "max":  round(float(primary.max()), 6),
+                "mean": round(float(primary.mean()), 6),
+                "std":  round(float(primary.std()) if primary.numel() > 1 else 0.0, 6),
+            },
+            "sample": sample.tolist(),
+            "rows": ROWS,
+            "cols": COLS,
+        }
+
+    return {"layers": result}
+
+
 @router.post("/debug_test")
 async def debug_test():
     return {"message": "Debug test works"}

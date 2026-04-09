@@ -1,8 +1,8 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { getBlockDefinition } from '@/blocks/BlockRegistry';
 import { useStore } from '@/store/useStore';
-import { Upload } from 'lucide-react';
+import { Upload, Eye } from 'lucide-react';
 import { Input, Select, ListBox, ListBoxItem } from '@heroui/react';
 
 const categoryLabels: Record<string, string> = {
@@ -16,6 +16,8 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
   const blockType = data.blockType as string;
   const params = data.params as Record<string, any> || {};
   const updateNodeData = useStore((state) => state.updateNodeData);
+  const setInspectorNodeId = useStore((state) => state.setInspectorNodeId);
+  const [hovered, setHovered] = useState(false);
 
   const definition = getBlockDefinition(blockType);
 
@@ -145,16 +147,34 @@ export const NodeRender = memo(({ id, data, selected }: NodeProps) => {
       className={`relative min-w-[180px] max-w-[240px] bg-white rounded-xl border-[2px] transition-all duration-200 ${
         selected ? 'shadow-lg' : 'shadow-sm hover:shadow-md'
       }`}
-      style={{ 
+      style={{
         borderColor: color,
         boxShadow: selected ? `0 0 0 8px ${color}33, 0 4px 20px rgba(0,0,0,0.15)` : undefined
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Top color accent bar */}
       <div
         className="h-2.5 rounded-t-[10px] w-full bg-opacity-90"
         style={{ backgroundColor: color }}
       />
+
+      {/* Eye / Inspect button — visible on hover or selected */}
+      {(hovered || selected) && (
+        <button
+          className="nodrag absolute top-4 right-2 z-10 flex items-center justify-center w-5 h-5 rounded-md bg-white/80 hover:bg-white border border-[#e0e0e0] shadow-sm transition-all"
+          style={{ color }}
+          title="Inspect block"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setInspectorNodeId(id);
+          }}
+        >
+          <Eye size={11} />
+        </button>
+      )}
 
       {/* Header area */}
       <div className="px-3.5 pt-2 pb-1.5">

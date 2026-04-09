@@ -17,4 +17,13 @@ export class RnnBlock extends BlockDefinition {
   };
   inputs: BlockPort[] = [{ id: 'in', label: 'Input', type: 'tensor' }];
   outputs: BlockPort[] = [{ id: 'out', label: 'Output', type: 'tensor' }];
+
+  description = "A basic recurrent neural network that processes sequences one time step at a time, maintaining a hidden state that carries information forward. Simple to understand but often replaced by LSTM or GRU in practice.";
+  whenToUse = "Use RNN for short sequences (under ~20 steps) where the basic recurrent structure is enough. For longer sequences, use LSTM or GRU — they handle long-range dependencies much better. Set batch_first=True for the standard (batch, sequence, features) layout.";
+  commonMistakes = [
+    "Using RNN for sequences longer than 20 steps — it suffers from vanishing gradients and effectively forgets early context. Switch to LSTM or GRU.",
+    "Forgetting to set batch_first=True, which causes the confusing default layout [seq_len, batch, features] instead of [batch, seq_len, features].",
+    "Not knowing how to handle the RNN output — it returns (output_sequence, hidden_state). If you only need the final summary, take the last time step of the output.",
+  ];
+  pytorchClass = "nn.RNN";
 }

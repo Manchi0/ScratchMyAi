@@ -60,6 +60,19 @@ interface AppState {
     training_time_seconds: number | null;
   } | null) => void;
 
+  lastTrainedModelId: string | null;
+  setLastTrainedModelId: (id: string | null) => void;
+
+  // Block Inspector
+  inspectorNodeId: string | null;
+  setInspectorNodeId: (id: string | null) => void;
+
+  // AI Tutor panel control (cross-component signalling)
+  tutorPrefill: string | null;
+  setTutorPrefill: (msg: string | null) => void;
+  openTutorPanelTick: number;
+  requestOpenTutorPanel: () => void;
+
   // Lesson State
   stepIndex: number;
   setStepIndex: (index: number) => void;
@@ -164,6 +177,9 @@ export const useStore = create<AppState>((set, get) => ({
   lastTrainingResult: null,
   setLastTrainingResult: (result) => set({ lastTrainingResult: result }),
 
+  lastTrainedModelId: null,
+  setLastTrainedModelId: (id) => set({ lastTrainedModelId: id }),
+
   trainingConfig: {
     loss: "CrossEntropy",
     optimizer: "Adam",
@@ -179,6 +195,14 @@ export const useStore = create<AppState>((set, get) => ({
       },
     }));
   },
+
+  inspectorNodeId: null,
+  setInspectorNodeId: (id) => set({ inspectorNodeId: id }),
+
+  tutorPrefill: null,
+  setTutorPrefill: (msg) => set({ tutorPrefill: msg }),
+  openTutorPanelTick: 0,
+  requestOpenTutorPanel: () => set((state) => ({ openTutorPanelTick: state.openTutorPanelTick + 1 })),
 
   stepIndex: 0,
   setStepIndex: (stepIndex) => set({ stepIndex }),

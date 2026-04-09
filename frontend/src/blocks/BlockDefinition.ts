@@ -16,13 +16,19 @@ export abstract class BlockDefinition {
   abstract category: 'input' | 'output' | 'layer' | 'activation';
   abstract title: string;
   abstract icon: ElementType;
-  
+
   // Strongly-typed parameter configuration
   abstract params: Record<string, BlockParameter>;
-  
+
   // Connections
   abstract inputs: BlockPort[];
   abstract outputs: BlockPort[];
+
+  // Documentation fields (populated per block)
+  description?: string;
+  whenToUse?: string;
+  commonMistakes?: string[];
+  pytorchClass?: string;
 
   // Color mapping based on category
   private static categoryColors: Record<BlockDefinition['category'], string> = {

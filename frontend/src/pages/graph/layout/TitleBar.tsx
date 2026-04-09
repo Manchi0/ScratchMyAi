@@ -253,6 +253,7 @@ export function TitleBar() {
           onClose={() => setIsTrainingModalOpen(false)}
           graphData={graphDataForTraining}
           title={title}
+          graphId={workflowId}
         />
       )}
     </>

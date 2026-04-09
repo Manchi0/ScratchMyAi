@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertCircle, Code2, TerminalSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@heroui/react';
 import { useStore } from '@/store/useStore';
@@ -10,13 +10,19 @@ interface TrainingConsoleProps {
   onClose: () => void;
   graphData: any;
   title: string;
+  graphId?: string | null;
 }
 
-export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingConsoleProps) {
+export function TrainingConsole({ isOpen, onClose, graphData, title, graphId }: TrainingConsoleProps) {
   const navigate = useNavigate();
   const setLastTrainingResult = useStore((s) => s.setLastTrainingResult);
+  const setLastTrainedModelId = useStore((s) => s.setLastTrainedModelId);
   const [logs, setLogs] = useState<{ id: string; type: 'log' | 'error' | 'done'; message: string }[]>([]);
   const [status, setStatus] = useState<'idle' | 'training' | 'success' | 'error'>('idle');
+  const [activeView, setActiveView] = useState<'logs' | 'code'>('logs');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [codeStatus, setCodeStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [codeError, setCodeError] = useState('');
   const [modelId, setModelId] = useState<string | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const hasStartedForOpenRef = useRef(false);
@@ -32,14 +38,55 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
     if (!isOpen) {
       hasStartedForOpenRef.current = false;
       isStartInFlightRef.current = false;
+      setActiveView('logs');
+      setGeneratedCode('');
+      setCodeStatus('idle');
+      setCodeError('');
       return;
     }
 
     if (!hasStartedForOpenRef.current) {
       hasStartedForOpenRef.current = true;
+      fetchGeneratedCode();
       startTraining();
     }
   }, [isOpen]);
+
+  const fetchGeneratedCode = async () => {
+    try {
+      setCodeStatus('loading');
+      setCodeError('');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const response = await fetch('http://localhost:8000/models/export/python', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          graph_json: graphData,
+          dataset: graphData?.dataset,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate code (${response.status})`);
+      }
+
+      const payload = await response.json();
+      const code = String(payload?.code || '');
+      if (!code.trim()) {
+        throw new Error('No code returned by backend');
+      }
+
+      setGeneratedCode(code);
+      setCodeStatus('ready');
+    } catch (err: any) {
+      setCodeStatus('error');
+      setCodeError(err?.message || 'Failed to fetch generated code');
+    }
+  };
 
   const startTraining = async () => {
     if (isStartInFlightRef.current) {
@@ -63,7 +110,8 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
         body: JSON.stringify({
           name: title || "Untitled Model",
           dataset: graphData?.dataset || "mnist",
-          graph_json: graphData
+          graph_json: graphData,
+          graph_id: graphId || null,
         })
       });
 
@@ -97,6 +145,7 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
                
                if (data.type === 'done') {
                  setModelId(data.model_id);
+                 setLastTrainedModelId(data.model_id ?? null);
                  setStatus('success');
                  setLastTrainingResult({
                    accuracy: data.accuracy ?? null,
@@ -155,27 +204,75 @@ export function TrainingConsole({ isOpen, onClose, graphData, title }: TrainingC
             <h2 className="text-lg font-semibold text-stone-900 tracking-tight">Training Model: {title || "Untitled"}</h2>
             <p className="text-xs font-medium text-stone-500 mt-0.5">Offloading compute directly to Modal Cloud GPUs</p>
           </div>
-          <button 
-            onClick={handleClose}
-            disabled={status === 'training'}
-            className="p-2 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors disabled:opacity-50"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveView('logs')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                activeView === 'logs'
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-white text-stone-600 border-stone-300 hover:text-stone-800'
+              }`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <TerminalSquare size={13} />
+                Logs
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveView('code')}
+              className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                activeView === 'code'
+                  ? 'bg-stone-900 text-white border-stone-900'
+                  : 'bg-white text-stone-600 border-stone-300 hover:text-stone-800'
+              }`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Code2 size={13} />
+                View Generated Code
+              </span>
+            </button>
+            <button 
+              onClick={handleClose}
+              disabled={status === 'training'}
+              className="p-2 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors disabled:opacity-50"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Logs Terminal */}
-        <div className="flex-1 bg-stone-900 overflow-y-auto p-4 font-mono text-sm shadow-inner relative min-h-[300px]">
-          {logs.map((log) => (
-             <div key={log.id} className={`mb-1.5 leading-relaxed break-words ${
-               log.type === 'error' ? 'text-red-400 font-medium' : 'text-stone-300'
-             }`}>
-               <span className="text-stone-500 mr-2 select-none">&gt;</span>
-               {log.message}
-             </div>
-          ))}
-          <div ref={logsEndRef} />
-        </div>
+        {activeView === 'logs' ? (
+          <div className="flex-1 bg-stone-900 overflow-y-auto p-4 font-mono text-sm shadow-inner relative min-h-[300px]">
+            {logs.map((log) => (
+              <div key={log.id} className={`mb-1.5 leading-relaxed break-words ${
+                log.type === 'error' ? 'text-red-400 font-medium' : 'text-stone-300'
+              }`}>
+                <span className="text-stone-500 mr-2 select-none">&gt;</span>
+                {log.message}
+              </div>
+            ))}
+            <div ref={logsEndRef} />
+          </div>
+        ) : (
+          <div className="flex-1 bg-[#0f172a] overflow-auto p-0 shadow-inner relative min-h-[300px]">
+            {codeStatus === 'loading' && (
+              <div className="h-full w-full flex items-center justify-center text-slate-300 text-sm">
+                <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Generating PyTorch code...</span>
+              </div>
+            )}
+            {codeStatus === 'error' && (
+              <div className="h-full w-full flex items-center justify-center text-red-300 text-sm px-6 text-center">
+                {codeError || 'Could not load generated code.'}
+              </div>
+            )}
+            {codeStatus === 'ready' && (
+              <pre className="m-0 p-4 text-[12px] leading-5 font-mono text-slate-200 whitespace-pre">
+                <code>{generatedCode}</code>
+              </pre>
+            )}
+          </div>
+        )}
 
         {/* Footer Status */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-[#e8e7e2] bg-stone-50 shrink-0">

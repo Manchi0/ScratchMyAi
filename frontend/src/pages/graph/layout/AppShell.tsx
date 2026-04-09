@@ -30,8 +30,10 @@ import { NodeRender } from "@/pages/graph/canvas/NodeRender";
 import { WireEdge } from "@/pages/graph/canvas/WireEdge";
 import { getBlockDefinition } from "@/blocks/BlockRegistry";
 import { loadGraph } from "@/lib/graphFunctions";
+import { getTrainedModelMeta } from "@/lib/modelFunctions";
 import { validateConnection } from "@/lib/connectionValidator";
 import { ContextMenu, type ContextMenuData } from "./ContextMenu";
+import { BlockInspector } from "@/components/BlockInspector";
 
 import type { Course } from "@/pages/learn/courses/mlpIntro";
 
@@ -135,6 +137,10 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
     setStepIndex,
     setCheckResult,
     setHintLevel,
+    inspectorNodeId,
+    setInspectorNodeId,
+    setLastTrainedModelId,
+    setLastTrainingResult,
   } = useStore();
 
   const lessonCourse = courseId ? LESSON_COURSES[courseId] : undefined;
@@ -207,10 +213,22 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
           if (row.training_config) {
             setTrainingConfig(row.training_config);
           }
+
+          setLastTrainedModelId(row.trained_model_id ?? null);
+
+          if (row.trained_model_id) {
+            getTrainedModelMeta(row.trained_model_id)
+              .then((meta) => setLastTrainingResult(meta))
+              .catch(() => {/* non-fatal — inspector will show untrained state */});
+          } else {
+            setLastTrainingResult(null);
+          }
         })
         .catch((err) => console.error("Failed to load graph:", err));
     } else {
       // New workflow — reset to defaults
+      setLastTrainedModelId(null);
+      setLastTrainingResult(null);
       setWorkflowId(null);
       setCourseId(initialLessonCourseId || null);
       
@@ -231,7 +249,7 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
         epochs: 5,
       });
     }
-  }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, setCourseId, setStepIndex, setCheckResult, setHintLevel, initialLessonCourseId, user]);
+  }, [id, setWorkflowId, setTitle, setNodes, setEdges, setTrainingConfig, setCourseId, setStepIndex, setCheckResult, setHintLevel, setLastTrainedModelId, setLastTrainingResult, initialLessonCourseId, user]);
 
   const isValidConnection = useCallback((connection: any) => {
     const { nodes: currentNodes } = useStore.getState();
@@ -276,6 +294,7 @@ function AppShellContent({ lessonCourseId: initialLessonCourseId }: { lessonCour
 
   return (
     <>
+      <BlockInspector nodeId={inspectorNodeId} onClose={() => setInspectorNodeId(null)} />
       <div className="flex flex-col h-screen w-full bg-[#fcfcfc] text-[#1c1917] overflow-hidden">
         <TitleBar />
 

@@ -10,6 +10,7 @@ export interface GraphRow {
   edges: Edge[];
   training_config?: TrainingConfig;
   course_id?: string | null;
+  trained_model_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +93,15 @@ export async function listGraphs(userId: string): Promise<GraphSummary[]> {
 
   if (error) throw error;
   return data as GraphSummary[];
+}
+
+/** Write the trained_model_id back onto a graph row after a successful training run. */
+export async function linkTrainedModelToGraph(graphId: string, modelId: string): Promise<void> {
+  const { error } = await supabase
+    .from('graphs')
+    .update({ trained_model_id: modelId })
+    .eq('id', graphId);
+  if (error) throw error;
 }
 
 /** Delete a single graph. */
